@@ -1,0 +1,27 @@
+{
+  "name": "mediagrid-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run web\"",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "server": "npm run tauri dev --prefix apps/server",
+    "web": "npm run dev --prefix apps/web",
+    "mobile": "npm run start --prefix apps/mobile"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "turbo": "^2.0.0",
+    "typescript": "^5.0.0",
+    "prettier": "^3.0.0",
+    "eslint": "^8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "msgpackr-extract",
+      "esbuild",
+      "@tauri-apps/cli"
+    ]
+  }
+}

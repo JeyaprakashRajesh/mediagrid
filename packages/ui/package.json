@@ -1,0 +1,15 @@
+{
+  "name": "@mediagrid/ui",
+  "version": "1.0.0",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts*\""
+  },
+  "dependencies": {
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0"
+  }
+}
