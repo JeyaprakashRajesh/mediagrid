@@ -195,7 +195,6 @@ async fn handle_upload(
     let relative_category_folder = match query.category.as_str() {
         "movies" => &media_folders.movies,
         "music" => &media_folders.music,
-        "shows" => &media_folders.shows,
         "photos" => &media_folders.photos,
         "drive" => &media_folders.drive,
         _ => return Err(warp::reject::reject()),
@@ -371,7 +370,6 @@ pub fn get_routes(
 
             let movies_count = *counts.get("movies").unwrap_or(&0);
             let music_count = *counts.get("music").unwrap_or(&0);
-            let shows_count = *counts.get("shows").unwrap_or(&0);
             let photos_count = *counts.get("photos").unwrap_or(&0);
             let drive_count = *counts.get("drive").unwrap_or(&0);
 
@@ -388,13 +386,6 @@ pub fn get_routes(
                     name: "Music".into(),
                     folder: "media/music".into(),
                     itemCount: music_count,
-                    lastScannedAt: state.last_scan_at.clone(),
-                },
-                CategoryDefinition {
-                    id: "shows".into(),
-                    name: "Shows".into(),
-                    folder: "media/shows".into(),
-                    itemCount: shows_count,
                     lastScannedAt: state.last_scan_at.clone(),
                 },
                 CategoryDefinition {
@@ -1003,7 +994,9 @@ pub fn get_routes(
             }
         });
 
+    #[allow(non_snake_case)]
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct ProgressRequest {
         mediaId: String,
         progress: f64,
@@ -1058,7 +1051,9 @@ pub fn get_routes(
         });
 
     // Authentication requests
+    #[allow(non_snake_case)]
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct LoginRequest {
         username: String,
         password: String,
@@ -1247,7 +1242,9 @@ pub fn get_routes(
             }
         });
 
+    #[allow(non_snake_case)]
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct PairDeviceRequest {
         token: String,
         deviceId: String,
@@ -1499,7 +1496,7 @@ pub fn get_routes(
                     }
                 };
 
-                let mut stdout = child.stdout.take().ok_or_else(|| warp::reject::not_found())?;
+                let stdout = child.stdout.take().ok_or_else(|| warp::reject::not_found())?;
                 
                 let stream = futures::stream::unfold(stdout, |mut stdout| async move {
                     let mut buf = vec![0u8; 8192];
@@ -1540,7 +1537,9 @@ pub fn get_routes(
             }
         });
 
+    #[allow(non_snake_case)]
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct PlaylistCreateRequest {
         id: Option<String>,
         name: String,
@@ -1614,7 +1613,9 @@ pub fn get_routes(
             }
         });
 
+    #[allow(non_snake_case)]
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct QueueSaveRequest {
         currentIndex: usize,
         mediaIds: Vec<String>,
@@ -1676,7 +1677,6 @@ pub fn get_routes(
                 let relative_category_folder = match req.category.as_str() {
                     "movies" => &media_folders.movies,
                     "music" => &media_folders.music,
-                    "shows" => &media_folders.shows,
                     "photos" => &media_folders.photos,
                     "drive" => &media_folders.drive,
                     _ => return Err(warp::reject::reject()),
@@ -1691,9 +1691,14 @@ pub fn get_routes(
                     return Err(warp::reject::reject());
                 }
 
+                // Log success so create-directory requests are visible in logs
+                log::info!("Created directory {:?}", target_dir);
+
                 let state = shared.lock().unwrap();
                 if let Some(jm) = &state.job_manager {
-                    jm.enqueue_scan();
+                    // Enqueue a targeted indexing job for the new folder so empty
+                    // playlists appear quickly without waiting for a full scan.
+                    jm.enqueue_index_media(target_dir.clone(), req.category.clone());
                 }
 
                 Ok::<_, warp::Rejection>(warp::reply::json(&serde_json::json!({
@@ -1719,7 +1724,6 @@ pub fn get_routes(
                 let relative_category_folder = match req.category.as_str() {
                     "movies" => &media_folders.movies,
                     "music" => &media_folders.music,
-                    "shows" => &media_folders.shows,
                     "photos" => &media_folders.photos,
                     "drive" => &media_folders.drive,
                     _ => return Err(warp::reject::reject()),
@@ -1777,7 +1781,6 @@ pub fn get_routes(
                 let relative_category_folder = match req.category.as_str() {
                     "movies" => &media_folders.movies,
                     "music" => &media_folders.music,
-                    "shows" => &media_folders.shows,
                     "photos" => &media_folders.photos,
                     "drive" => &media_folders.drive,
                     _ => return Err(warp::reject::reject()),

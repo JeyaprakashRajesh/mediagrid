@@ -19,6 +19,7 @@ pub struct ExtractedMetadata {
     pub format: Option<String>,
     pub artist: Option<String>,
     pub album: Option<String>,
+    pub title: Option<String>,
     pub mime_type: Option<String>,
     pub size_bytes: Option<u64>,
     pub hash: Option<String>,
@@ -45,6 +46,7 @@ struct FFProbeFormat {
     duration: Option<String>,
     bit_rate: Option<String>,
     format_name: Option<String>,
+    tags: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Extract metadata for a media file at `path` with the given `category`.
@@ -101,12 +103,39 @@ fn extract_inner(path: &Path, category: &str) -> io::Result<ExtractedMetadata> {
 
     result.hash = Some(compute_hash(path)?);
 
-    if matches!(category, "movies" | "shows" | "music") {
+    if matches!(category, "movies" | "music") {
         if let Ok(probed) = probe(path) {
             if let Some(format) = probed.format {
                 result.duration = format.duration.and_then(|value| value.parse::<f64>().ok());
                 result.bitrate = format.bit_rate.and_then(|value| value.parse::<u64>().ok());
                 result.format = format.format_name;
+
+                if let Some(tags) = format.tags {
+                    let get_tag = |key: &str| -> Option<String> {
+                        tags.get(&key.to_lowercase())
+                            .or_else(|| tags.get(&key.to_uppercase()))
+                            .or_else(|| tags.get(key))
+                            .map(|val| val.trim().to_string())
+                    };
+
+                    if let Some(artist_tag) = get_tag("artist") {
+                        if !artist_tag.is_empty() {
+                            result.artist = Some(artist_tag);
+                        }
+                    }
+
+                    if let Some(album_tag) = get_tag("album") {
+                        if !album_tag.is_empty() {
+                            result.album = Some(album_tag);
+                        }
+                    }
+
+                    if let Some(title_tag) = get_tag("title") {
+                        if !title_tag.is_empty() {
+                            result.title = Some(title_tag);
+                        }
+                    }
+                }
             }
 
             if let Some(stream) = probed.streams.first() {
@@ -141,17 +170,21 @@ fn extract_inner(path: &Path, category: &str) -> io::Result<ExtractedMetadata> {
     }
 
     if category == "music" {
-        let stem = path
-            .file_stem()
-            .and_then(|value| value.to_str())
-            .unwrap_or_default();
-        if let Some(position) = stem.find(" - ") {
-            result.artist = Some(stem[..position].trim().to_string());
+        if result.artist.is_none() {
+            let stem = path
+                .file_stem()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default();
+            if let Some(position) = stem.find(" - ") {
+                result.artist = Some(stem[..position].trim().to_string());
+            }
         }
-        if let Some(parent) = path.parent() {
-            if let Some(album) = parent.file_name().and_then(|value| value.to_str()) {
-                if album != "music" {
-                    result.album = Some(album.to_string());
+        if result.album.is_none() {
+            if let Some(parent) = path.parent() {
+                if let Some(album) = parent.file_name().and_then(|value| value.to_str()) {
+                    if album != "music" {
+                        result.album = Some(album.to_string());
+                    }
                 }
             }
         }

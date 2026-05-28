@@ -372,7 +372,6 @@ impl IndexingService {
         let category_name = match category {
             "movies" => "Movies",
             "music" => "Music",
-            "shows" => "Shows",
             "photos" => "Photos",
             "drive" => "Drive",
             _ => category,
@@ -453,7 +452,6 @@ fn classify_kind(category: &str) -> String {
     match category {
         "movies" => "movie".to_string(),
         "music" => "music".to_string(),
-        "shows" => "show".to_string(),
         "photos" => "photo".to_string(),
         _ => "drive".to_string(),
     }

@@ -122,7 +122,7 @@ export const StreamingDashboard: React.FC = () => {
       {/* Grid Overview Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Active Streams */}
-        <article className="panel flex flex-col justify-between p-5 bg-slate-950/40 border-slate-900">
+        <article className="panel flex flex-col justify-between p-5 bg-slate-950/20 border-slate-800/40">
           <div className="flex items-start justify-between">
             <div>
               <p className="eyebrow text-xs text-slate-500 uppercase font-mono tracking-wider">Active Streams</p>
@@ -130,7 +130,7 @@ export const StreamingDashboard: React.FC = () => {
                 {stats?.activeSessions ?? 0}
               </h4>
             </div>
-            <div className="p-3 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
               <Wifi size={20} />
             </div>
           </div>
@@ -140,7 +140,7 @@ export const StreamingDashboard: React.FC = () => {
         </article>
 
         {/* Egress Bandwidth */}
-        <article className="panel flex flex-col justify-between p-5 bg-slate-950/40 border-slate-900">
+        <article className="panel flex flex-col justify-between p-5 bg-slate-950/20 border-slate-800/40">
           <div className="flex items-start justify-between">
             <div>
               <p className="eyebrow text-xs text-slate-500 uppercase font-mono tracking-wider">Egress Rate</p>
@@ -148,7 +148,7 @@ export const StreamingDashboard: React.FC = () => {
                 {formatBandwidth(stats?.bandwidth?.currentEgressBps)}
               </h4>
             </div>
-            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
               <Activity size={20} />
             </div>
           </div>
@@ -158,7 +158,7 @@ export const StreamingDashboard: React.FC = () => {
         </article>
 
         {/* Transcoding Queue */}
-        <article className="panel flex flex-col justify-between p-5 bg-slate-950/40 border-slate-900">
+        <article className="panel flex flex-col justify-between p-5 bg-slate-950/20 border-slate-800/40">
           <div className="flex items-start justify-between">
             <div>
               <p className="eyebrow text-xs text-slate-500 uppercase font-mono tracking-wider">Active Jobs</p>
@@ -166,7 +166,7 @@ export const StreamingDashboard: React.FC = () => {
                 {activeJobCount}
               </h4>
             </div>
-            <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
               <Cpu size={20} />
             </div>
           </div>
@@ -176,7 +176,7 @@ export const StreamingDashboard: React.FC = () => {
         </article>
 
         {/* Uptime */}
-        <article className="panel flex flex-col justify-between p-5 bg-slate-950/40 border-slate-900">
+        <article className="panel flex flex-col justify-between p-5 bg-slate-950/20 border-slate-800/40">
           <div className="flex items-start justify-between">
             <div>
               <p className="eyebrow text-xs text-slate-500 uppercase font-mono tracking-wider">Uptime</p>
@@ -184,7 +184,7 @@ export const StreamingDashboard: React.FC = () => {
                 {formatUptime(stats?.uptimeSeconds)}
               </h4>
             </div>
-            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
               <Clock size={20} />
             </div>
           </div>
@@ -198,13 +198,13 @@ export const StreamingDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Columns: Transcoding Queue Details */}
         <div className="lg:col-span-2 space-y-6">
-          <section className="panel bg-slate-950/40 border-slate-900 p-5">
+          <section className="panel bg-slate-950/20 border-slate-800/40 p-5">
             <div className="panel-header mb-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Layers size={18} className="text-indigo-400" />
+                <Layers size={18} className="text-slate-400" />
                 Transcoding Jobs Queue
               </h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 font-mono">
                 {jobs.length} total
               </span>
             </div>
@@ -265,9 +265,9 @@ export const StreamingDashboard: React.FC = () => {
 
         {/* Right 1 Column: Additional Info and System stats */}
         <div className="space-y-6">
-          <section className="panel bg-slate-950/40 border-slate-900 p-5">
+          <section className="panel bg-slate-950/20 border-slate-800/40 p-5">
             <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <Server size={18} className="text-sky-400" />
+              <Server size={18} className="text-slate-400" />
               Runtime Stats
             </h3>
             <div className="space-y-3.5 text-xs">
@@ -286,16 +286,16 @@ export const StreamingDashboard: React.FC = () => {
             </div>
           </section>
 
-          <section className="panel bg-slate-950/40 border-slate-900 p-5">
+          <section className="panel bg-slate-950/20 border-slate-800/40 p-5">
             <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <Database size={18} className="text-emerald-400" />
+              <Database size={18} className="text-slate-400" />
               Library Allocations
             </h3>
             <div className="space-y-3 text-xs">
               {stats?.categoryCounts && Object.entries(stats.categoryCounts).map(([cat, count]) => (
                 <div key={cat} className="flex justify-between items-center py-1">
                   <span className="text-slate-400 capitalize flex items-center gap-2">
-                    {cat === 'movies' ? <Film size={12} className="text-sky-400" /> : <Tv size={12} className="text-amber-400" />}
+                    {cat === 'movies' ? <Film size={12} className="text-slate-400" /> : <Tv size={12} className="text-slate-400" />}
                     {cat}
                   </span>
                   <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold font-mono text-slate-300">

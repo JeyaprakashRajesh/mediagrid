@@ -24,8 +24,8 @@ pub fn generate_thumbnail(root: &Path, item: &MediaIndexItem) -> io::Result<Opti
     // Attempt category-specific generation
     let gen_result = match item.category.as_str() {
         "photos" => generate_photo_thumbnail(&item.path, &output_path),
-        "movies" | "shows" => generate_video_thumbnail(&item.path, item.duration, &output_path),
-        // Music and drive: skip real thumbnail, fall through to placeholder below
+        "movies" => generate_video_thumbnail(&item.path, item.duration, &output_path),
+        "music" => generate_audio_cover_thumbnail(&item.path, &output_path),
         _ => Err(io::Error::new(
             io::ErrorKind::Unsupported,
             "no thumbnail for category",
@@ -63,15 +63,48 @@ fn generate_video_thumbnail(source: &Path, duration: Option<f64>, output: &Path)
         .arg(source)
         .arg("-frames:v")
         .arg("1")
+        .arg("-update")
+        .arg("1")
         .arg("-vf")
         .arg("scale=320:-1")
+        .arg("-f")
+        .arg("image2")
         .arg(output)
         .status()?;
 
     if status.success() {
         Ok(())
     } else {
-        Err(io::Error::new(io::ErrorKind::Other, "ffmpeg failed"))
+        Err(io::Error::new(io::ErrorKind::Other, "ffmpeg video thumbnail failed"))
+    }
+}
+
+fn generate_audio_cover_thumbnail(source: &Path, output: &Path) -> io::Result<()> {
+    // Extract the embedded cover art from the audio file.
+    // -frames:v 1  — only decode one video (cover) frame
+    // -update 1    — tell the image2 muxer this is a single static file,
+    //                not an image sequence (prevents the "pattern is invalid" error)
+    // -f image2    — explicitly select the image2 muxer
+    let status = Command::new("ffmpeg")
+        .arg("-y")
+        .arg("-i")
+        .arg(source)
+        .arg("-an")
+        .arg("-frames:v")
+        .arg("1")
+        .arg("-update")
+        .arg("1")
+        .arg("-vf")
+        .arg("scale=320:-1")
+        .arg("-f")
+        .arg("image2")
+        .arg(output)
+        .status()?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, "ffmpeg audio cover extraction failed"))
     }
 }
 
@@ -87,7 +120,7 @@ fn write_placeholder(output: &Path, category: &str) -> io::Result<()> {
 
     // Pick a category-specific background colour
     let bg: Rgb<u8> = match category {
-        "movies" | "shows" => Rgb([28, 32, 48]), // dark blue-grey (video)
+        "movies" => Rgb([28, 32, 48]),           // dark blue-grey (video)
         "music" => Rgb([32, 28, 48]),            // dark purple (audio)
         "photos" => Rgb([28, 40, 28]),           // dark green (images)
         _ => Rgb([36, 36, 36]),                  // neutral dark
@@ -95,7 +128,7 @@ fn write_placeholder(output: &Path, category: &str) -> io::Result<()> {
 
     // Accent colour for the icon indicator
     let accent: Rgb<u8> = match category {
-        "movies" | "shows" => Rgb([70, 100, 180]),
+        "movies" => Rgb([70, 100, 180]),
         "music" => Rgb([100, 70, 180]),
         "photos" => Rgb([70, 160, 80]),
         _ => Rgb([100, 100, 100]),
@@ -124,7 +157,7 @@ fn write_placeholder(output: &Path, category: &str) -> io::Result<()> {
             // Category-specific inner icon
             match category {
                 // Play triangle for video
-                "movies" | "shows" => {
+                "movies" => {
                     if dy >= -24 && dy <= 24 && dx >= -18 && dx <= 22 {
                         let half = (24 - dy.abs()) as i32;
                         if dx >= -18 && dx <= half - 2 {

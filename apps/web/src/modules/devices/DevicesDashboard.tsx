@@ -92,7 +92,7 @@ export function DevicesDashboard() {
 
   return (
     <div className="grid gap-5">
-      <section className="panel border-sky-500/15 bg-slate-950/40">
+      <section className="panel border-slate-800/50 bg-slate-950/20">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
             <p className="eyebrow text-xs text-slate-400 uppercase">Tailnet endpoint</p>

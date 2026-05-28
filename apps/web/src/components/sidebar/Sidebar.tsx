@@ -3,22 +3,19 @@ import { useAppStore } from '../../store/useAppStore';
 import {
   Film,
   Music,
-  Tv,
   Image as ImageIcon,
-  Wifi,
-  WifiOff,
-  Database,
   Activity,
   HardDrive,
   Users,
   QrCode,
+  User,
+  Cloud,
 } from 'lucide-react';
 import type { CategoryId } from '@mediagrid/types';
 
 const categoryIcons: Record<CategoryId, React.ComponentType<any>> = {
   movies: Film,
   music: Music,
-  shows: Tv,
   photos: ImageIcon,
   drive: HardDrive,
 };
@@ -26,12 +23,37 @@ const categoryIcons: Record<CategoryId, React.ComponentType<any>> = {
 export const Sidebar: React.FC = () => {
   const {
     websocketStatus,
+    runtime,
     categories,
     selectedCategory,
-    health,
-    runtime,
     currentView,
+    user,
+    performLogout,
   } = useAppStore();
+
+  const [isMobile, setIsMobile] = React.useState(false);
+  const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    if (!showProfileMenu) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.nav-profile-wrapper')) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showProfileMenu]);
 
   const handleCategorySelect = (categoryId: CategoryId) => {
     window.location.hash = `#/library/${categoryId}`;
@@ -70,192 +92,203 @@ export const Sidebar: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    performLogout();
+  };
+
+  const workspaceShortcuts = [
+    { id: 'devices', label: 'Devices', icon: Users, hash: '#/devices' },
+    { id: 'pairing', label: 'Pairing', icon: QrCode, hash: '#/pairing' },
+    { id: 'admin', label: 'Monitor', icon: Activity, hash: '#/streaming' },
+  ] as const;
+
   return (
-    <aside className="sidebar flex flex-col justify-between h-full">
-      <div>
-        {/* Brand Lockup */}
-        <div className="brand-lockup flex items-center gap-3.5 mb-6">
-          <span className="brand-mark">MG</span>
-          <div>
-            <p className="eyebrow text-[10px] tracking-[0.2em] uppercase text-slate-400">Runtime-first</p>
-            <h1 className="text-xl font-bold tracking-tight text-white leading-tight">MediaGrid</h1>
+    <>
+      <header className="navbar-container">
+        {/* 1st Card: Logo and Text */}
+        <div className="nav-card nav-card--brand">
+          <img src="/logo.svg" alt="MediaGrid Logo" className="brand-logo-img" />
+          <div className="brand-info">
+            <h1 className="brand-title">MediaGrid</h1>
+            <div className="nav-brand-subline">
+              <span>{websocketStatus === 'connected' ? 'Live cloud sync' : 'Workspace ready'}</span>
+            </div>
           </div>
         </div>
 
-        {/* Connection status banner */}
-        <div className={`connection-banner ${getBannerClass()} transition-colors duration-300`}>
-          <span className={`connection-dot ${getDotClass()} transition-all duration-300`} />
-          <span className="text-sm font-medium tracking-wide flex items-center gap-1.5">
-            {websocketStatus === 'connected' ? (
-              <Wifi size={14} className="opacity-80" />
-            ) : (
-              <WifiOff size={14} className="opacity-80" />
-            )}
-            {getStatusText()}
-          </span>
-        </div>
+        {/* 2nd Card: Navigation Links (PC ONLY) */}
+        {!isMobile && (
+          <nav className="nav-card nav-card--nav" aria-label="Media categories">
+            {categories.map((category) => {
+              const Icon = categoryIcons[category.id] || Film;
+              const isActive = category.id === selectedCategory && currentView === 'library';
 
-        {/* Category Pill navigation */}
-        <nav className="category-nav gap-2.5 flex flex-col" aria-label="Media categories">
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`nav-pill ${isActive ? 'active' : ''}`}
+                  onClick={() => handleCategorySelect(category.id)}
+                  title={`${category.name} · ${category.itemCount} items`}
+                >
+                  <span className="nav-pill-icon-wrap">
+                    <Icon size={15} />
+                  </span>
+                  <span className="nav-pill-copy">
+                    <span className="nav-pill-text">{category.name}</span>
+                    <span className="nav-pill-meta">{category.itemCount}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+
+        {/* 3rd Card: PC Status and Profile */}
+        <div className="nav-card nav-card--status">
+          <div className={`nav-status-badge ${getBannerClass()}`} title={getStatusText()}>
+            <span className={`connection-dot ${getDotClass()}`} />
+            <span className="nav-status-text">
+              {websocketStatus === 'connected' ? 'Connected' : 'Offline'}
+            </span>
+          </div>
+
+          {!isMobile && (
+            <div className="nav-runtime-chip" title={runtime?.runtimeVersion || 'Runtime'}>
+              <Cloud size={12} />
+              <span>{runtime?.runtimeVersion ? `v${runtime.runtimeVersion}` : 'Runtime'}</span>
+            </div>
+          )}
+
+          <div className="nav-divider-vertical" />
+
+          {/* Profile Wrapper with Dropdown Menu */}
+          <div className="nav-profile-wrapper">
+            <button
+              type="button"
+              className="nav-profile"
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              aria-label="User Profile"
+              aria-expanded={showProfileMenu}
+            >
+              <div className="nav-avatar-circle" title={user?.username || 'User'}>
+                <User size={14} className="text-sky-400" />
+              </div>
+              <div className="nav-profile-details">
+                <span className="nav-username">{user?.username || 'Admin'}</span>
+                <span className="nav-profile-role">Manage account</span>
+              </div>
+            </button>
+
+            {showProfileMenu && (
+              <div className="nav-profile-menu">
+                <div className="nav-menu-header">
+                  <span className="nav-menu-username">{user?.username || 'Admin'}</span>
+                  <span className="nav-menu-status">Active Account</span>
+                </div>
+                
+                <div className="nav-menu-divider" />
+                
+                <button
+                  type="button"
+                  className={`nav-menu-item ${currentView === 'devices' ? 'active' : ''}`}
+                  onClick={() => {
+                    window.location.hash = '#/devices';
+                    setShowProfileMenu(false);
+                  }}
+                >
+                  <Users size={14} />
+                  <span>Devices</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`nav-menu-item ${currentView === 'pairing' ? 'active' : ''}`}
+                  onClick={() => {
+                    window.location.hash = '#/pairing';
+                    setShowProfileMenu(false);
+                  }}
+                >
+                  <QrCode size={14} />
+                  <span>Pairing</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`nav-menu-item ${currentView === 'admin' ? 'active' : ''}`}
+                  onClick={() => {
+                    window.location.hash = '#/streaming';
+                    setShowProfileMenu(false);
+                  }}
+                >
+                  <Activity size={14} />
+                  <span>Monitor</span>
+                </button>
+
+                <div className="nav-menu-divider" />
+
+                <button
+                  type="button"
+                  className="nav-menu-item nav-menu-item--logout"
+                  onClick={() => {
+                    handleLogout();
+                    setShowProfileMenu(false);
+                  }}
+                >
+                  <User size={14} />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {!isMobile && (
+        <div className="nav-workspace-dock" aria-label="Workspace shortcuts">
+          {workspaceShortcuts.map((shortcut) => {
+            const Icon = shortcut.icon;
+            const isActive = currentView === shortcut.id;
+
+            return (
+              <button
+                key={shortcut.id}
+                type="button"
+                className={`nav-workspace-chip ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  window.location.hash = shortcut.hash;
+                  setShowProfileMenu(false);
+                }}
+              >
+                <Icon size={13} />
+                <span>{shortcut.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 2nd Card: Navigation Links (MOBILE ONLY, root level child sibling to prevent nested position: fixed inside blur filter) */}
+      {isMobile && (
+        <nav className="nav-card nav-card--nav mobile-bottom-nav" aria-label="Media categories">
           {categories.map((category) => {
             const Icon = categoryIcons[category.id] || Film;
-            const isActive = category.id === selectedCategory;
+            const isActive = category.id === selectedCategory && currentView === 'library';
 
             return (
               <button
                 key={category.id}
                 type="button"
-                className={`category-pill flex items-center justify-between transition-all duration-200 ${
-                  isActive ? 'active' : ''
-                }`}
+                className={`nav-pill ${isActive ? 'active' : ''}`}
                 onClick={() => handleCategorySelect(category.id)}
               >
-                <span className="flex items-center gap-3">
-                  <Icon
-                    size={18}
-                    className={`transition-colors ${
-                      isActive ? 'text-sky-400' : 'text-slate-400'
-                    }`}
-                  />
-                  <span>
-                    <strong className="text-sm font-semibold tracking-wide text-white block">
-                      {category.name}
-                    </strong>
-                    <small className="text-[11px] text-slate-400 font-mono tracking-tight block">
-                      {category.folder}
-                    </small>
-                  </span>
-                </span>
-                <b className="text-xs px-2.5 py-1 rounded-full bg-slate-900/60 border border-slate-800/40 text-blue-100 font-semibold font-mono">
-                  {category.itemCount}
-                </b>
+                <Icon size={20} />
+                <span className="nav-pill-text">{category.name}</span>
               </button>
             );
           })}
         </nav>
-
-        <div className="border-t border-slate-900/60 my-4" />
-
-        <div className="px-3.5 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
-          Devices
-        </div>
-        <button
-          type="button"
-          onClick={() => { window.location.hash = '#/devices'; }}
-          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 mb-2 ${
-            currentView === 'devices'
-              ? 'bg-sky-500/10 border-sky-500/20 text-sky-400'
-              : 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-900/30'
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <Users
-              size={18}
-              className={`transition-colors ${
-                currentView === 'devices' ? 'text-sky-400' : 'text-slate-400'
-              }`}
-            />
-            <span>
-              <strong className="text-sm font-semibold tracking-wide text-white block">
-                Device Status
-              </strong>
-              <small className="text-[10px] text-slate-400 font-mono tracking-tight block">
-                Trusted and active devices
-              </small>
-            </span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => { window.location.hash = '#/pairing'; }}
-          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
-            currentView === 'pairing'
-              ? 'bg-sky-500/10 border-sky-500/20 text-sky-400'
-              : 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-900/30'
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <QrCode
-              size={18}
-              className={`transition-colors ${
-                currentView === 'pairing' ? 'text-sky-400' : 'text-slate-400'
-              }`}
-            />
-            <span>
-              <strong className="text-sm font-semibold tracking-wide text-white block">
-                Pair Device
-              </strong>
-              <small className="text-[10px] text-slate-400 font-mono tracking-tight block">
-                QR or access code onboarding
-              </small>
-            </span>
-          </span>
-        </button>
-
-        <div className="px-3.5 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
-          Administration
-        </div>
-        <button
-          type="button"
-          onClick={() => { window.location.hash = '#/streaming'; }}
-          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
-            currentView === 'admin'
-              ? 'bg-sky-500/10 border-sky-500/20 text-sky-400'
-              : 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-900/30'
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <Activity
-              size={18}
-              className={`transition-colors ${
-                currentView === 'admin' ? 'text-sky-400' : 'text-slate-400'
-              }`}
-            />
-            <span>
-              <strong className="text-sm font-semibold tracking-wide text-white block">
-                Streaming Monitor
-              </strong>
-              <small className="text-[10px] text-slate-400 font-mono tracking-tight block">
-                Active jobs & sessions
-              </small>
-            </span>
-          </span>
-        </button>
-      </div>
-
-      {/* Sidebar Summary footer */}
-      <section className="sidebar-summary">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
-          <Activity size={12} className="text-sky-400" />
-          Runtime Summary
-        </h2>
-        <dl className="grid gap-2 text-xs">
-          <div className="flex justify-between py-1 border-b border-slate-800/20">
-            <dt className="text-slate-400 flex items-center gap-1">
-              <Activity size={10} /> Status
-            </dt>
-            <dd className="font-semibold text-white uppercase tracking-wider text-[10px]">
-              {health?.runtimeStatus ?? 'offline'}
-            </dd>
-          </div>
-          <div className="flex flex-col py-1 border-b border-slate-800/20">
-            <dt className="text-slate-400 flex items-center gap-1">
-              <HardDrive size={10} /> Storage
-            </dt>
-            <dd className="font-semibold font-mono text-[10px] text-slate-300 break-all leading-tight mt-0.5">
-              {runtime?.storageRoot ?? 'C:/MediaGrid'}
-            </dd>
-          </div>
-          <div className="flex justify-between py-1">
-            <dt className="text-slate-400 flex items-center gap-1">
-              <Database size={10} /> Database
-            </dt>
-            <dd className="font-semibold text-emerald-400">
-              {health?.databaseStatus ?? 'missing'}
-            </dd>
-          </div>
-        </dl>
-      </section>
-    </aside>
+      )}
+    </>
   );
 };

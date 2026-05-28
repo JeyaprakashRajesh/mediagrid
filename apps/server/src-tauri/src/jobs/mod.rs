@@ -491,6 +491,12 @@ async fn refresh_metadata(
     .map_err(|error| error.to_string())?
     .map_err(|error| error.to_string())?;
 
+    if let Some(ref title) = extracted.title {
+        if !title.is_empty() {
+            item.title = title.clone();
+        }
+    }
+
     item.artist = extracted.artist;
     item.album = extracted.album;
     item.mime_type = extracted.mime_type;
@@ -742,7 +748,6 @@ fn emit_category_updated(shared: &SharedRuntimeState, category: &str) {
     let category_name = match category {
         "movies" => "Movies",
         "music" => "Music",
-        "shows" => "Shows",
         "photos" => "Photos",
         "drive" => "Drive",
         _ => category,

@@ -1,11 +1,10 @@
 export type CategoryId =
   | 'movies'
   | 'music'
-  | 'shows'
   | 'photos'
   | 'drive';
 
-export type MediaKind = 'movie' | 'music' | 'show' | 'photo' | 'drive' | 'unknown';
+export type MediaKind = 'movie' | 'music' | 'photo' | 'drive' | 'unknown';
 
 export type RuntimeStatus = 'starting' | 'ready' | 'degraded' | 'offline' | 'stopped';
 
@@ -54,6 +53,10 @@ export type MediaItem = {
   previewPath?: string | null;
   mimeType?: string | null;
   sizeBytes?: number | null;
+  duration?: number | null;
+  codec?: string | null;
+  resolution?: string | null;
+  format?: string | null;
 };
 
 export type MediaListResponse = {
@@ -168,7 +171,6 @@ export type AppConfig = {
 export const CATEGORY_DEFINITIONS: readonly CategoryDefinition[] = [
   { id: 'movies', name: 'Movies', folder: 'media/movies', itemCount: 0, lastScannedAt: null },
   { id: 'music', name: 'Music', folder: 'media/music', itemCount: 0, lastScannedAt: null },
-  { id: 'shows', name: 'Shows', folder: 'media/shows', itemCount: 0, lastScannedAt: null },
   { id: 'photos', name: 'Photos', folder: 'media/photos', itemCount: 0, lastScannedAt: null },
   { id: 'drive', name: 'Drive', folder: 'media/drive', itemCount: 0, lastScannedAt: null },
 ] as const;
@@ -176,7 +178,6 @@ export const CATEGORY_DEFINITIONS: readonly CategoryDefinition[] = [
 export const MEDIA_EXTENSIONS: Record<CategoryId, readonly string[]> = {
   movies: ['mp4', 'mkv', 'avi'],
   music: ['mp3', 'flac', 'wav'],
-  shows: ['mp4', 'mkv', 'avi'],
   photos: ['jpg', 'png', 'webp'],
   drive: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'tar', 'gz', 'rar', '7z', 'png', 'jpg', 'jpeg', 'mp4', 'mp3', 'wav', 'flac', 'mkv', 'avi'],
 };
@@ -188,7 +189,6 @@ export const createDefaultAppConfig = (): AppConfig => ({
   mediaFolders: {
     movies: 'media/movies',
     music: 'media/music',
-    shows: 'media/shows',
     photos: 'media/photos',
     drive: 'media/drive',
   },

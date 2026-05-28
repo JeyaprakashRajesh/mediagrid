@@ -244,16 +244,99 @@ export const useAppStore = create<AppState>((set) => ({
   setAudioRepeat: (audioRepeat) => set({ audioRepeat }),
   setAudioPlaying: (audioPlaying) => set({ audioPlaying }),
   setAudioCurrentIndex: (audioCurrentIndex) => set({ audioCurrentIndex }),
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   playNextAudio: () =>
     set((state) => {
       if (state.audioQueue.length === 0) return {};
-      let nextIndex = state.audioCurrentIndex + 1;
-      if (nextIndex >= state.audioQueue.length) {
-        if (state.audioRepeat === 'all') {
-          nextIndex = 0;
-        } else {
-          return { audioPlaying: false };
+      if (state.audioRepeat === 'one') {
+        return {
+          audioCurrentIndex: state.audioCurrentIndex,
+          activeAudio: state.audioQueue[state.audioCurrentIndex],
+          audioPlaying: true,
+        };
+      }
+      let nextIndex = state.audioCurrentIndex;
+
+      if (state.audioShuffle) {
+        nextIndex = state.audioQueue.length > 1
+          ? Math.floor(Math.random() * state.audioQueue.length)
+          : state.audioCurrentIndex;
+        if (state.audioQueue.length > 1 && nextIndex === state.audioCurrentIndex) {
+          nextIndex = (nextIndex + 1) % state.audioQueue.length;
+        }
+      } else {
+        nextIndex = state.audioCurrentIndex + 1;
+        if (nextIndex >= state.audioQueue.length) {
+          if (state.audioRepeat === 'all') {
+            nextIndex = 0;
+          } else {
+            return { audioPlaying: false };
+          }
         }
       }
       return {
@@ -265,12 +348,30 @@ export const useAppStore = create<AppState>((set) => ({
   playPrevAudio: () =>
     set((state) => {
       if (state.audioQueue.length === 0) return {};
-      let prevIndex = state.audioCurrentIndex - 1;
-      if (prevIndex < 0) {
-        if (state.audioRepeat === 'all') {
-          prevIndex = state.audioQueue.length - 1;
-        } else {
-          prevIndex = 0;
+      if (state.audioRepeat === 'one') {
+        return {
+          audioCurrentIndex: state.audioCurrentIndex,
+          activeAudio: state.audioQueue[state.audioCurrentIndex],
+          audioPlaying: true,
+        };
+      }
+      let prevIndex = state.audioCurrentIndex;
+
+      if (state.audioShuffle) {
+        prevIndex = state.audioQueue.length > 1
+          ? Math.floor(Math.random() * state.audioQueue.length)
+          : state.audioCurrentIndex;
+        if (state.audioQueue.length > 1 && prevIndex === state.audioCurrentIndex) {
+          prevIndex = (prevIndex - 1 + state.audioQueue.length) % state.audioQueue.length;
+        }
+      } else {
+        prevIndex = state.audioCurrentIndex - 1;
+        if (prevIndex < 0) {
+          if (state.audioRepeat === 'all') {
+            prevIndex = state.audioQueue.length - 1;
+          } else {
+            prevIndex = 0;
+          }
         }
       }
       return {

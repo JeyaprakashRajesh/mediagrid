@@ -2,10 +2,11 @@ import React, { useEffect } from 'react';
 import { buildRuntimeUrl } from '@mediagrid/api';
 import { useAppStore } from '../../store/useAppStore';
 import { fetchMedia } from '../../services/runtime';
+import { MusicRouter } from '../../music/MusicRouter';
+import '../../music/music.css';
 import {
   Film,
   Music,
-  Tv,
   Image as ImageIcon,
   FolderOpen,
   Loader2,
@@ -29,8 +30,6 @@ const getCategoryIcon = (id: CategoryId) => {
       return Film;
     case 'music':
       return Music;
-    case 'shows':
-      return Tv;
     case 'photos':
       return ImageIcon;
     case 'drive':
@@ -195,12 +194,9 @@ export const MediaContent: React.FC = () => {
     loadingMedia,
     categories,
     setActiveVideo,
-    setActiveAudio,
-    setAudioQueue,
-    setAudioCurrentIndex,
-    setAudioPlaying,
     currentFolderPath,
   } = useAppStore();
+
 
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const [uploadingFiles, setUploadingFiles] = React.useState<string[]>([]);
@@ -496,11 +492,15 @@ export const MediaContent: React.FC = () => {
     );
   }
 
+  if (selectedCategory === 'music') {
+    return <MusicRouter />;
+  }
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6 relative min-h-[500px]">
+    <div className={`flex flex-col lg:flex-row gap-6 relative min-h-[500px] ${selectedCategory === 'movies' ? 'music-root' : ''}`}>
       <div className="flex-1 space-y-6">
         {/* Breadcrumbs and Action Toolbar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/30 p-4 rounded-2xl border border-slate-800/40">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 panel p-4">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-1 text-sm font-semibold">
             <button 
@@ -543,12 +543,12 @@ export const MediaContent: React.FC = () => {
           <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
             <button
               onClick={() => setShowNewFolderModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 text-slate-300 text-xs font-bold font-mono tracking-wide transition active:scale-95"
+              className="liquid-button flex items-center gap-1.5 font-mono text-xs"
             >
               <FolderPlus size={14} className="text-teal-400" />
               NEW FOLDER
             </button>
-            <label className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold font-mono tracking-wide cursor-pointer transition active:scale-95 shadow shadow-sky-500/10 whitespace-nowrap">
+            <label className="liquid-button liquid-button-accent flex items-center gap-1.5 cursor-pointer whitespace-nowrap font-mono text-xs">
               <Upload size={14} />
               UPLOAD FILES
               <input 
@@ -612,7 +612,7 @@ export const MediaContent: React.FC = () => {
                             ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-[1.02]'
                             : selectedItem?.path === folder.path && selectedItem?.isFolder
                             ? 'bg-sky-500/10 border-sky-500/30 shadow'
-                            : 'bg-slate-900/30 border-slate-800/40 hover:bg-slate-900/50 hover:border-slate-800'
+                            : 'bg-white/[0.01] border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.12]'
                         }`}
                       >
                         <FolderOpen size={20} className="text-teal-400 shrink-0 group-hover:scale-105 transition" />
@@ -659,70 +659,7 @@ export const MediaContent: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : selectedCategory === 'music' ? (
-                <div className="panel overflow-hidden p-2">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 font-semibold">
-                          <th className="py-3 px-4 w-12 text-center">#</th>
-                          <th className="py-3 px-4">Title</th>
-                          <th className="py-3 px-4">Artist</th>
-                          <th className="py-3 px-4">Album</th>
-                          <th className="py-3 px-4 text-center w-24">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/40">
-                        {files.map((item, index) => {
-                          const handlePlayMusic = (item: any, index: number) => {
-                            setAudioQueue(files);
-                            setAudioCurrentIndex(index);
-                            setActiveAudio(item);
-                            setAudioPlaying(true);
-                          };
-                          return (
-                            <tr
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, item, false)}
-                              className={`hover:bg-slate-900/40 transition-colors group cursor-grab active:cursor-grabbing ${
-                                selectedItem?.id === item.id ? 'bg-sky-500/5' : ''
-                              }`}
-                              key={item.id}
-                              onClick={() => setSelectedItem(item)}
-                              onDoubleClick={() => handlePlayMusic(item, index)}
-                            >
-                              <td className="py-3.5 px-4 text-center font-mono text-slate-500 font-semibold group-hover:text-slate-300">
-                                {index + 1}
-                              </td>
-                              <td className="py-3.5 px-4 font-bold text-white truncate max-w-xs" title={item.title}>
-                                {item.title}
-                              </td>
-                              <td className="py-3.5 px-4 text-slate-300 truncate max-w-[150px]" title={item.artist || 'Unknown Artist'}>
-                                {item.artist || 'Unknown Artist'}
-                              </td>
-                              <td className="py-3.5 px-4 text-slate-400 truncate max-w-[150px]" title={item.album || 'Unknown Album'}>
-                                {item.album || 'Unknown Album'}
-                              </td>
-                              <td className="py-3.5 px-4 text-center">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePlayMusic(item, index);
-                                  }}
-                                  className="px-3 py-1 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-[10px] font-bold font-mono tracking-wide transition shadow shadow-sky-500/10 active:scale-95 flex items-center gap-1 mx-auto"
-                                >
-                                  <Play size={10} fill="currentColor" />
-                                  PLAY
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : selectedCategory === 'movies' || selectedCategory === 'shows' ? (
+              ) : selectedCategory === 'movies' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {files.map((item) => (
                     <article
@@ -796,7 +733,7 @@ export const MediaContent: React.FC = () => {
                               key={item.id}
                               onClick={() => setSelectedItem(item)}
                               onDoubleClick={() => {
-                                if (item.kind === 'movie' || item.kind === 'show') {
+                                if (item.kind === 'movie') {
                                   setActiveVideo(item);
                                 }
                               }}
@@ -829,8 +766,8 @@ export const MediaContent: React.FC = () => {
 
       {/* Details Side Panel */}
       {selectedItem && (
-        <aside className="w-full lg:w-[320px] shrink-0 bg-slate-950/45 border border-slate-800/60 rounded-3xl p-5 space-y-6 backdrop-blur">
-          <div className="flex justify-between items-center pb-3 border-b border-slate-800/50">
+        <aside className="w-full lg:w-[320px] shrink-0 panel space-y-6">
+          <div className="flex justify-between items-center pb-3 border-b border-white/5">
             <h3 className="text-sm font-bold text-white tracking-wide uppercase">Details</h3>
             <button 
               onClick={() => setSelectedItem(null)}
@@ -913,14 +850,14 @@ export const MediaContent: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-4 border-t border-slate-800/50 space-y-2.5">
+            <div className="pt-4 border-t border-white/5 space-y-2.5 flex flex-col">
               {!selectedItem.isFolder && (
                 <a
                   href={mediaFileUrl(selectedItem.path)}
                   download
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold font-mono tracking-wide transition shadow shadow-sky-500/10 active:scale-95"
+                  className="liquid-button liquid-button-accent justify-center w-full py-2.5 font-mono text-xs"
                 >
                   <FileDown size={14} />
                   DOWNLOAD FILE
@@ -932,17 +869,17 @@ export const MediaContent: React.FC = () => {
                   setRenameValue(selectedItem.isFolder ? selectedItem.name : selectedItem.title);
                   setShowRenameModal(true);
                 }}
-                className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-bold font-mono tracking-wide transition active:scale-95"
+                className="liquid-button justify-center w-full py-2.5 font-mono text-xs"
               >
-                <Edit2 size={14} className="text-amber-400" />
+                <Edit2 size={14} className="text-amber-400 mr-1.5" />
                 RENAME
               </button>
 
               <button
                 onClick={handleDelete}
-                className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-red-500/30 hover:bg-red-500/5 text-slate-300 hover:text-red-400 text-xs font-bold font-mono tracking-wide transition active:scale-95"
+                className="liquid-button justify-center w-full py-2.5 font-mono text-xs hover:text-red-400 hover:border-red-500/20"
               >
-                <Trash2 size={14} className="text-red-500" />
+                <Trash2 size={14} className="text-red-500 mr-1.5" />
                 DELETE
               </button>
             </div>
@@ -992,7 +929,7 @@ export const MediaContent: React.FC = () => {
               placeholder="Folder name"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-500 transition font-mono"
+              className="liquid-input font-mono text-xs"
               autoFocus
             />
             <div className="flex justify-end gap-3 pt-2">
@@ -1031,7 +968,7 @@ export const MediaContent: React.FC = () => {
               placeholder="New name"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-500 transition font-mono"
+              className="liquid-input font-mono text-xs"
               autoFocus
             />
             <div className="flex justify-end gap-3 pt-2">

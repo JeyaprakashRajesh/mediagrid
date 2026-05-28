@@ -50,22 +50,22 @@ export const SetupWizard: React.FC = () => {
   const isTauri = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#07111d] p-6 text-slate-300">
-      <div className="w-full max-w-lg bg-slate-900/60 border border-slate-800 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-        
-        {/* Decorative background gradients */}
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
+    <div className="login-screen">
+      {/* Liquid background orbs */}
+      <div className="liquid-orb orb-1" />
+      <div className="liquid-orb orb-2" />
+      <div className="liquid-orb orb-3" />
 
+      <div className="glass-modal w-full max-w-lg p-8 relative overflow-hidden">
         <div className="relative z-10">
           <header className="text-center mb-8">
             <div className="inline-flex p-4 bg-sky-500/10 border border-sky-500/20 text-sky-400 rounded-2xl mb-4">
-              <Sparkles size={32} />
+              <Sparkles size={28} />
             </div>
-            <h2 className="text-white text-2xl font-extrabold tracking-wide">
+            <h2 className="text-white text-2xl font-extrabold tracking-tight">
               Initialize MediaGrid Storage
             </h2>
-            <p className="text-sm text-slate-400 mt-2 max-w-[40ch] mx-auto leading-relaxed">
+            <p className="text-xs text-slate-400 mt-2 max-w-[34ch] mx-auto leading-relaxed">
               Define the storage root directory where your music, movies, photos, and databases will reside.
             </p>
           </header>
@@ -75,7 +75,7 @@ export const SetupWizard: React.FC = () => {
             {/* Quick Drive Selector */}
             {availableDrives.length > 0 && (
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-3">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">
                   Select Available Storage Drive
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -84,9 +84,9 @@ export const SetupWizard: React.FC = () => {
                       key={drive}
                       type="button"
                       onClick={() => handleDriveSelect(drive)}
-                      className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-slate-800/40 border border-slate-800 hover:border-sky-500/50 hover:bg-slate-800/80 transition-all text-left group"
+                      className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-sky-500/40 hover:bg-white/[0.04] transition-all text-left group"
                     >
-                      <HardDrive size={18} className="text-slate-500 group-hover:text-sky-400 transition-colors" />
+                      <HardDrive size={16} className="text-slate-500 group-hover:text-sky-400 transition-colors" />
                       <span className="text-xs font-bold text-white font-mono">{drive}</span>
                     </button>
                   ))}
@@ -96,7 +96,7 @@ export const SetupWizard: React.FC = () => {
 
             {/* Custom Path Selection Input */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">
                 Target Storage Root Path
               </label>
               <div className="flex gap-2">
@@ -105,29 +105,29 @@ export const SetupWizard: React.FC = () => {
                   placeholder="e.g. D:/MediaGrid"
                   value={selectedPath}
                   onChange={(e) => setSelectedPath(e.target.value)}
-                  className="flex-1 bg-slate-950/80 border border-slate-800 focus:border-sky-500/60 focus:ring-1 focus:ring-sky-500/30 rounded-2xl px-4 py-3.5 text-sm text-white font-mono placeholder:text-slate-600 transition-all outline-none"
+                  className="liquid-input flex-1 font-mono text-xs"
                   required
                 />
                 {isTauri && (
                   <button
                     type="button"
                     onClick={handleBrowse}
-                    className="px-4 bg-slate-850 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-2xl flex items-center justify-center transition-colors"
+                    className="liquid-button px-4 flex items-center justify-center shrink-0"
                     title="Browse Directory"
                   >
-                    <FolderOpen size={20} />
+                    <FolderOpen size={18} />
                   </button>
                 )}
               </div>
-              <p className="text-[10px] text-slate-500 italic mt-1 leading-normal">
-                All required catalog system directories (`media/movies`, `cache/thumbnails`, etc.) will be created inside this path automatically.
+              <p className="text-[10px] text-slate-500 italic mt-1.5 leading-normal">
+                All required catalog directories (media/movies, cache/thumbnails, etc.) will be created inside this path automatically.
               </p>
             </div>
 
             {/* Error Message */}
             {errorMsg && (
               <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl">
-                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                 <div className="text-xs font-medium leading-relaxed">{errorMsg}</div>
               </div>
             )}
@@ -135,7 +135,7 @@ export const SetupWizard: React.FC = () => {
             {/* Success Message */}
             {successMsg && (
               <div className="flex items-start gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl">
-                <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+                <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
                 <div className="text-xs font-medium leading-relaxed">{successMsg}</div>
               </div>
             )}
@@ -144,11 +144,11 @@ export const SetupWizard: React.FC = () => {
             <button
               type="submit"
               disabled={isSettingUp || !selectedPath.trim()}
-              className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm tracking-wide disabled:opacity-50 transition-all shadow-lg shadow-sky-500/15 cursor-pointer active:scale-[0.98]"
+              className="login-btn w-full"
             >
               {isSettingUp ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                   <span>INITIALIZING FILE STRUCTURE...</span>
                 </>
               ) : (

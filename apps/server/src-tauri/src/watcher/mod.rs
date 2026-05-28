@@ -31,7 +31,6 @@ pub fn start_watcher(
         for folder in [
             "media/movies",
             "media/music",
-            "media/shows",
             "media/photos",
             "media/drive",
         ] {
@@ -91,7 +90,7 @@ fn category_for_path(root: &Path, path: &Path) -> Option<String> {
     let relative = path.strip_prefix(root).ok()?;
     let text = relative.to_string_lossy().replace('\\', "/");
 
-    for category in ["movies", "music", "shows", "photos", "drive"] {
+    for category in ["movies", "music", "photos", "drive"] {
         if text.starts_with(&format!("media/{category}")) {
             return Some(category.to_string());
         }

@@ -19,7 +19,6 @@ pub struct RuntimeConfig {
 pub struct MediaFolders {
     pub movies: String,
     pub music: String,
-    pub shows: String,
     pub photos: String,
     pub drive: String,
 }
@@ -33,7 +32,6 @@ impl RuntimeConfig {
             media_folders: MediaFolders {
                 movies: "media/movies".to_string(),
                 music: "media/music".to_string(),
-                shows: "media/shows".to_string(),
                 photos: "media/photos".to_string(),
                 drive: "media/drive".to_string(),
             },
@@ -97,9 +95,6 @@ pub fn validate_config(config: &RuntimeConfig) -> Result<(), String> {
     }
     if config.media_folders.music.is_empty() {
         return Err("media_folders.music cannot be empty".to_string());
-    }
-    if config.media_folders.shows.is_empty() {
-        return Err("media_folders.shows cannot be empty".to_string());
     }
     if config.media_folders.photos.is_empty() {
         return Err("media_folders.photos cannot be empty".to_string());

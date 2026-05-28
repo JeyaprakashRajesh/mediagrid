@@ -1,7 +1,7 @@
 import React from 'react';
 import { buildRuntimeUrl } from '@mediagrid/api';
 import { useAppStore } from '../store/useAppStore';
-import { Play, Film, Tv } from 'lucide-react';
+import { Play, Film } from 'lucide-react';
 
 export const ContinueWatching: React.FC = () => {
   const { continueWatchingItems, setActiveVideo } = useAppStore();
@@ -28,7 +28,7 @@ export const ContinueWatching: React.FC = () => {
 
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
         {continueWatchingItems.map((item) => {
-          const Icon = item.category === 'shows' ? Tv : Film;
+          const Icon = Film;
           const progressPercent = Math.min(100, Math.max(0, item.progress * 100));
 
           return (

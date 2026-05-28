@@ -90,6 +90,10 @@ export const ensureRuntimeEndpoint = async (): Promise<string | null> => {
   return result;
 };
 
+export const resetRuntimeEndpoint = (): void => {
+  runtimeEndpointSyncPromise = null;
+};
+
 // Initialize token on client start (page refresh case)
 const initialToken = localStorage.getItem('mediagrid_token');
 if (initialToken) {

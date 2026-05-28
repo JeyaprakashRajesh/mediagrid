@@ -9,7 +9,6 @@ pub const REQUIRED_DIRECTORIES: &[&str] = &[
     "media",
     "media/movies",
     "media/music",
-    "media/shows",
     "media/photos",
     "media/drive",
     "cache",

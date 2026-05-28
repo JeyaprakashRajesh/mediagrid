@@ -1,0 +1,654 @@
+/* =========================================================
+   MediaGrid — Graphite Glass UI System
+   Dark Runtime + Apple Liquid Glass Inspired Design
+   ========================================================= */
+
+/* =========================================================
+   ROOT COLOR SYSTEM
+   ========================================================= */
+
+:root {
+  /* =========================
+     BASE COLORS
+     ========================= */
+
+  --bg-primary: #222222;
+  --bg-secondary: #2a2a2a;
+  --bg-elevated: #303030;
+  --bg-hover: #383838;
+
+  /* =========================
+     GLASS COLORS
+     ========================= */
+
+  --glass-primary: rgba(255, 255, 255, 0.05);
+  --glass-secondary: rgba(255, 255, 255, 0.08);
+  --glass-heavy: rgba(255, 255, 255, 0.12);
+
+  /* =========================
+     BORDERS
+     ========================= */
+
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-secondary: rgba(255, 255, 255, 0.05);
+
+  /* =========================
+     ACCENTS
+     ========================= */
+
+  --accent-primary: #4f8cff;
+  --accent-secondary: #63d8ff;
+  --accent-purple: #8b7cff;
+
+  /* =========================
+     STATUS COLORS
+     ========================= */
+
+  --success: #4ade80;
+  --warning: #facc15;
+  --error: #fb7185;
+
+  /* =========================
+     TEXT COLORS
+     ========================= */
+
+  --text-primary: #f5f5f5;
+  --text-secondary: #b4b4b4;
+  --text-muted: #7a7a7a;
+  --text-disabled: #5a5a5a;
+
+  /* =========================
+     SHADOWS
+     ========================= */
+
+  --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.2);
+
+  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  --shadow-glow-blue:
+    0 0 20px rgba(79, 140, 255, 0.25);
+
+  --shadow-glow-purple:
+    0 0 30px rgba(139, 124, 255, 0.2);
+
+  /* =========================
+     RADIUS
+     ========================= */
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  /* =========================
+     TRANSITIONS
+     ========================= */
+
+  --transition-smooth:
+    all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* =========================
+     BLUR
+     ========================= */
+
+  --blur-sm: blur(12px);
+  --blur-md: blur(24px);
+  --blur-lg: blur(40px);
+}
+
+/* =========================================================
+   GLOBAL STYLES
+   ========================================================= */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+
+  background: var(--bg-primary);
+
+  color: var(--text-primary);
+
+  font-family:
+    Inter,
+    sans-serif;
+
+  overflow: hidden;
+}
+
+/* =========================================================
+   APP LAYOUT
+   ========================================================= */
+
+.app-layout {
+  display: flex;
+
+  width: 100vw;
+  height: 100vh;
+
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(79, 140, 255, 0.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(139, 124, 255, 0.08),
+      transparent 25%
+    ),
+    var(--bg-primary);
+}
+
+/* =========================================================
+   APPLE LIQUID GLASS SIDEBAR
+   ========================================================= */
+
+.sidebar {
+  width: 280px;
+  height: 100vh;
+
+  padding: 20px;
+
+  background: rgba(34, 34, 34, 0.72);
+
+  border-right:
+    1px solid var(--border-primary);
+
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+
+  box-shadow: var(--shadow-md);
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* =========================================================
+   SIDEBAR ITEMS
+   ========================================================= */
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  padding: 14px 18px;
+
+  border-radius: var(--radius-md);
+
+  color: var(--text-secondary);
+
+  cursor: pointer;
+
+  transition: var(--transition-smooth);
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* Apple Liquid Hover */
+.sidebar-item::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.08),
+      rgba(255,255,255,0.02)
+    );
+
+  opacity: 0;
+
+  transition: var(--transition-smooth);
+}
+
+.sidebar-item:hover::before {
+  opacity: 1;
+}
+
+.sidebar-item:hover {
+  color: var(--text-primary);
+
+  transform: translateX(4px);
+
+  background: rgba(255,255,255,0.04);
+}
+
+/* Active Sidebar */
+.sidebar-item.active {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(79,140,255,0.20),
+      rgba(79,140,255,0.08)
+    );
+
+  color: white;
+
+  border:
+    1px solid rgba(79,140,255,0.25);
+
+  box-shadow:
+    0 0 24px rgba(79,140,255,0.18);
+}
+
+/* =========================================================
+   MAIN CONTENT
+   ========================================================= */
+
+.main-content {
+  flex: 1;
+
+  padding: 24px;
+
+  overflow-y: auto;
+}
+
+/* =========================================================
+   GLASS PANEL
+   ========================================================= */
+
+.glass-panel {
+  background: var(--glass-primary);
+
+  border:
+    1px solid var(--border-primary);
+
+  border-radius: var(--radius-lg);
+
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+
+  box-shadow: var(--shadow-md);
+
+  transition: var(--transition-smooth);
+}
+
+/* Hover Elevation */
+.glass-panel:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    var(--shadow-lg),
+    var(--shadow-glow-blue);
+}
+
+/* =========================================================
+   DASHBOARD GRID
+   ========================================================= */
+
+.dashboard-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(auto-fit, minmax(280px, 1fr));
+
+  gap: 20px;
+}
+
+/* =========================================================
+   DASHBOARD CARD
+   ========================================================= */
+
+.dashboard-card {
+  padding: 24px;
+
+  background: rgba(255,255,255,0.04);
+
+  border:
+    1px solid rgba(255,255,255,0.06);
+
+  border-radius: var(--radius-lg);
+
+  backdrop-filter: blur(20px);
+
+  transition: var(--transition-smooth);
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient Glow */
+.dashboard-card::after {
+  content: "";
+
+  position: absolute;
+
+  width: 200px;
+  height: 200px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(79,140,255,0.12),
+      transparent 70%
+    );
+
+  top: -100px;
+  right: -100px;
+
+  pointer-events: none;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+
+  box-shadow:
+    0 12px 40px rgba(79,140,255,0.12);
+}
+
+/* =========================================================
+   MOVIE GRID
+   ========================================================= */
+
+.media-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(auto-fill, minmax(220px, 1fr));
+
+  gap: 22px;
+}
+
+/* =========================================================
+   MOVIE CARD
+   ========================================================= */
+
+.media-card {
+  position: relative;
+
+  background: var(--bg-secondary);
+
+  border-radius: 22px;
+
+  overflow: hidden;
+
+  cursor: pointer;
+
+  transition: var(--transition-smooth);
+
+  box-shadow: var(--shadow-sm);
+}
+
+.media-card:hover {
+  transform:
+    translateY(-6px)
+    scale(1.02);
+
+  box-shadow:
+    0 18px 40px rgba(79,140,255,0.18);
+}
+
+/* Poster */
+.media-poster {
+  width: 100%;
+  height: 320px;
+
+  object-fit: cover;
+}
+
+/* Media Info */
+.media-info {
+  padding: 16px;
+}
+
+/* =========================================================
+   PLAYER OVERLAY
+   ========================================================= */
+
+.player-overlay {
+  position: fixed;
+  inset: 0;
+
+  background:
+    rgba(20,20,20,0.82);
+
+  backdrop-filter: blur(30px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================
+   PLAYER CONTROLS
+   ========================================================= */
+
+.player-controls {
+  position: absolute;
+  bottom: 20px;
+
+  width: calc(100% - 40px);
+
+  padding: 18px;
+
+  border-radius: var(--radius-lg);
+
+  background:
+    rgba(255,255,255,0.06);
+
+  backdrop-filter: blur(24px);
+
+  border:
+    1px solid rgba(255,255,255,0.08);
+}
+
+/* =========================================================
+   TIMELINE
+   ========================================================= */
+
+.timeline {
+  width: 100%;
+  height: 6px;
+
+  background:
+    rgba(255,255,255,0.08);
+
+  border-radius: 999px;
+
+  overflow: hidden;
+}
+
+.timeline-progress {
+  height: 100%;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-primary),
+      var(--accent-purple)
+    );
+
+  box-shadow:
+    0 0 20px rgba(79,140,255,0.4);
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.liquid-button {
+  padding: 12px 18px;
+
+  border-radius: 16px;
+
+  border:
+    1px solid rgba(255,255,255,0.08);
+
+  background:
+    rgba(255,255,255,0.05);
+
+  color: white;
+
+  backdrop-filter: blur(20px);
+
+  transition: var(--transition-smooth);
+
+  cursor: pointer;
+}
+
+.liquid-button:hover {
+  transform: translateY(-2px);
+
+  background:
+    rgba(79,140,255,0.14);
+
+  box-shadow:
+    0 0 24px rgba(79,140,255,0.25);
+}
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
+.liquid-input {
+  width: 100%;
+
+  padding: 14px 16px;
+
+  border-radius: 16px;
+
+  border:
+    1px solid rgba(255,255,255,0.08);
+
+  background:
+    rgba(255,255,255,0.04);
+
+  color: white;
+
+  outline: none;
+
+  backdrop-filter: blur(20px);
+
+  transition: var(--transition-smooth);
+}
+
+.liquid-input:focus {
+  border-color:
+    rgba(79,140,255,0.35);
+
+  box-shadow:
+    0 0 20px rgba(79,140,255,0.15);
+}
+
+/* =========================================================
+   UPLOAD DROPZONE
+   ========================================================= */
+
+.upload-zone {
+  border:
+    2px dashed rgba(255,255,255,0.10);
+
+  border-radius: 28px;
+
+  padding: 60px 20px;
+
+  text-align: center;
+
+  background:
+    rgba(255,255,255,0.03);
+
+  backdrop-filter: blur(24px);
+
+  transition: var(--transition-smooth);
+}
+
+.upload-zone:hover {
+  border-color:
+    rgba(79,140,255,0.35);
+
+  background:
+    rgba(79,140,255,0.06);
+}
+
+/* =========================================================
+   STATUS BADGES
+   ========================================================= */
+
+.status-online {
+  color: var(--success);
+}
+
+.status-processing {
+  color: var(--warning);
+}
+
+.status-offline {
+  color: var(--error);
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background:
+    rgba(255,255,255,0.10);
+
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(255,255,255,0.16);
+}
+
+/* =========================================================
+   APPLE LIQUID FLOATING ORB
+   ========================================================= */
+
+.liquid-orb {
+  position: absolute;
+
+  width: 300px;
+  height: 300px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(79,140,255,0.20),
+      transparent 70%
+    );
+
+  filter: blur(60px);
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   GLASS MODAL
+   ========================================================= */
+
+.glass-modal {
+  background:
+    rgba(34,34,34,0.72);
+
+  border:
+    1px solid rgba(255,255,255,0.08);
+
+  border-radius: 32px;
+
+  backdrop-filter: blur(40px);
+
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.45);
+
+  padding: 28px;
+}

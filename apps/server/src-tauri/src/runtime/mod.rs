@@ -152,7 +152,6 @@ pub fn setup_runtime(app_handle: &tauri::AppHandle, selected_root: PathBuf) -> R
         media_folders: config::MediaFolders {
             movies: "media/movies".to_string(),
             music: "media/music".to_string(),
-            shows: "media/shows".to_string(),
             photos: "media/photos".to_string(),
             drive: "media/drive".to_string(),
         },
@@ -379,7 +378,7 @@ pub fn scan_library_now(shared: &SharedRuntimeState) -> Result<usize, String> {
         state.is_scanning = false;
     }
 
-    for category in ["movies", "music", "shows", "photos", "drive"] {
+    for category in ["movies", "music", "photos", "drive"] {
         let item_count = {
             let state = shared.lock().unwrap();
             let conn = state.db_conn.lock().unwrap();
@@ -391,7 +390,6 @@ pub fn scan_library_now(shared: &SharedRuntimeState) -> Result<usize, String> {
         let name = match category {
             "movies" => "Movies",
             "music" => "Music",
-            "shows" => "Shows",
             "photos" => "Photos",
             "drive" => "Drive",
             _ => category,

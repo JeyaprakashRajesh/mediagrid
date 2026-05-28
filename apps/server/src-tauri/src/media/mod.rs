@@ -38,7 +38,6 @@ pub fn scan_media(root: &Path, config: &RuntimeConfig) -> io::Result<Vec<MediaIn
     for (category, relative_folder) in [
         ("movies", &config.media_folders.movies),
         ("music", &config.media_folders.music),
-        ("shows", &config.media_folders.shows),
         ("photos", &config.media_folders.photos),
         ("drive", &config.media_folders.drive),
     ] {
@@ -188,10 +187,7 @@ fn is_supported(category: &str, extension: &str) -> bool {
             | ("music", "aac")
             | ("music", "ogg")
             | ("music", "m4a")
-            | ("shows", "mp4")
-            | ("shows", "mkv")
-            | ("shows", "avi")
-            | ("shows", "mov")
+
             | ("photos", "jpg")
             | ("photos", "jpeg")
             | ("photos", "png")
@@ -230,7 +226,6 @@ fn classify_kind(category: &str) -> String {
     match category {
         "movies" => "movie",
         "music" => "music",
-        "shows" => "show",
         "photos" => "photo",
         _ => "drive",
     }

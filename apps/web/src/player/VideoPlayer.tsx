@@ -360,7 +360,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ mediaItem, onClose }) 
         </div>
         <button
           onClick={onClose}
-          className="p-2.5 rounded-full bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white transition shadow-md border border-slate-800/40"
+          className="liquid-button p-2.5 rounded-full"
         >
           <X size={20} />
         </button>
@@ -385,7 +385,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ mediaItem, onClose }) 
             onChange={handleSeek}
             onPointerDown={handleSeekStart}
             onPointerUp={handleSeekEnd}
-            className="flex-1 h-1.5 rounded-lg appearance-none bg-slate-800 hover:bg-slate-700 cursor-pointer accent-sky-400 outline-none"
+            className="flex-1 outline-none"
           />
           <span className="text-[11px] font-mono text-slate-400 w-10 text-center">
             {formatTime(duration)}
@@ -397,16 +397,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ mediaItem, onClose }) 
           <div className="flex items-center gap-5">
             <button
               onClick={handlePlayPause}
-              className="p-3 rounded-full bg-sky-500 hover:bg-sky-400 text-slate-950 transition hover:scale-105 active:scale-95 shadow-md shadow-sky-500/25"
+              className="p-3 rounded-full liquid-button-accent text-white transition hover:scale-105 active:scale-95"
             >
-              {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
             </button>
 
             {/* Volume */}
             <div className="flex items-center gap-2 group">
               <button
                 onClick={toggleMute}
-                className="text-slate-400 hover:text-white transition p-1.5 hover:bg-slate-900/60 rounded-lg"
+                className="text-slate-400 hover:text-white transition p-1.5 hover:bg-white/5 rounded-lg"
               >
                 {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
               </button>
@@ -417,7 +417,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ mediaItem, onClose }) 
                 step={0.05}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-0 group-hover:w-20 accent-sky-400 h-1 rounded-lg appearance-none bg-slate-800 transition-all duration-300 cursor-pointer"
+                className="w-0 group-hover:w-20 outline-none transition-all duration-300"
               />
             </div>
           </div>
@@ -460,7 +460,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ mediaItem, onClose }) 
 
             {/* Subtitles Dropdown */}
             {showSubtitleMenu && (
-              <div className="absolute bottom-12 right-12 w-48 rounded-2xl bg-slate-950/90 border border-slate-800/80 p-2 shadow-2xl backdrop-blur-md flex flex-col z-50 animate-in fade-in-50 duration-200">
+              <div className="absolute bottom-14 right-12 w-48 rounded-2xl queue-popup p-2 flex flex-col z-50 animate-in fade-in-50 duration-200">
                 <span className="text-[10px] font-bold text-slate-500 uppercase px-3 py-1 font-mono">
                   Subtitles
                 </span>
@@ -499,7 +499,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ mediaItem, onClose }) 
 
             {/* Settings Options Dropdown */}
             {showSettings && (
-              <div className="absolute bottom-12 right-4 w-56 rounded-2xl bg-slate-950/90 border border-slate-800/80 p-3 shadow-2xl backdrop-blur-md flex flex-col gap-2 z-50 animate-in fade-in-50 duration-200">
+              <div className="absolute bottom-14 right-4 w-56 rounded-2xl queue-popup p-3 flex flex-col gap-2 z-50 animate-in fade-in-50 duration-200">
                 {/* Speed */}
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase px-2 font-mono">
