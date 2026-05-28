@@ -3,9 +3,9 @@ export type CategoryId =
   | 'music'
   | 'shows'
   | 'photos'
-  | 'downloads';
+  | 'drive';
 
-export type MediaKind = 'movie' | 'music' | 'show' | 'photo' | 'download' | 'unknown';
+export type MediaKind = 'movie' | 'music' | 'show' | 'photo' | 'drive' | 'unknown';
 
 export type RuntimeStatus = 'starting' | 'ready' | 'degraded' | 'offline' | 'stopped';
 
@@ -72,7 +72,13 @@ export type WebSocketEventType =
   | 'CATEGORY_UPDATED'
   | 'MEDIA_ADDED'
   | 'MEDIA_REMOVED'
-  | 'FILESYSTEM_REPAIRED';
+  | 'FILESYSTEM_REPAIRED'
+  | 'STREAM_STARTED'
+  | 'STREAM_STOPPED'
+  | 'TRANSCODE_STARTED'
+  | 'TRANSCODE_COMPLETED'
+  | 'WATCH_PROGRESS_UPDATED'
+  | 'PLAYBACK_ERROR';
 
 export type RuntimeWebSocketMessage<TType extends WebSocketEventType = WebSocketEventType> = {
   type: TType;
@@ -100,12 +106,54 @@ export type FilesystemRepairedMessage = RuntimeWebSocketMessage<'FILESYSTEM_REPA
   repairedPaths: string[];
 };
 
+export type StreamStartedMessage = RuntimeWebSocketMessage<'STREAM_STARTED'> & {
+  sessionId: string;
+  mediaId: string;
+  deviceId: string;
+  mode: string;
+  streamUrl: string;
+};
+
+export type StreamStoppedMessage = RuntimeWebSocketMessage<'STREAM_STOPPED'> & {
+  sessionId: string;
+};
+
+export type TranscodeStartedMessage = RuntimeWebSocketMessage<'TRANSCODE_STARTED'> & {
+  sessionId: string;
+  quality: string;
+};
+
+export type TranscodeCompletedMessage = RuntimeWebSocketMessage<'TRANSCODE_COMPLETED'> & {
+  sessionId: string;
+  mediaId: string;
+  quality: string;
+  jobId: string;
+};
+
+export type WatchProgressUpdatedMessage = RuntimeWebSocketMessage<'WATCH_PROGRESS_UPDATED'> & {
+  mediaId: string;
+  progress: number;
+};
+
+export type PlaybackErrorMessage = RuntimeWebSocketMessage<'PLAYBACK_ERROR'> & {
+  sessionId: string;
+  mediaId: string;
+  error: string;
+  jobId?: string;
+};
+
 export type WebSocketMessageMap = {
   RUNTIME_READY: RuntimeReadyMessage;
   CATEGORY_UPDATED: CategoryUpdatedMessage;
   MEDIA_ADDED: MediaAddedMessage;
   MEDIA_REMOVED: MediaRemovedMessage;
   FILESYSTEM_REPAIRED: FilesystemRepairedMessage;
+  STREAM_STARTED: StreamStartedMessage;
+  STREAM_STOPPED: StreamStoppedMessage;
+  TRANSCODE_STARTED: TranscodeStartedMessage;
+  TRANSCODE_COMPLETED: TranscodeCompletedMessage;
+  WATCH_PROGRESS_UPDATED: WatchProgressUpdatedMessage;
+  PLAYBACK_ERROR: PlaybackErrorMessage;
 };
 
 export type WebSocketMessage = WebSocketMessageMap[WebSocketEventType];
@@ -122,7 +170,7 @@ export const CATEGORY_DEFINITIONS: readonly CategoryDefinition[] = [
   { id: 'music', name: 'Music', folder: 'media/music', itemCount: 0, lastScannedAt: null },
   { id: 'shows', name: 'Shows', folder: 'media/shows', itemCount: 0, lastScannedAt: null },
   { id: 'photos', name: 'Photos', folder: 'media/photos', itemCount: 0, lastScannedAt: null },
-  { id: 'downloads', name: 'Downloads', folder: 'media/downloads', itemCount: 0, lastScannedAt: null },
+  { id: 'drive', name: 'Drive', folder: 'media/drive', itemCount: 0, lastScannedAt: null },
 ] as const;
 
 export const MEDIA_EXTENSIONS: Record<CategoryId, readonly string[]> = {
@@ -130,7 +178,7 @@ export const MEDIA_EXTENSIONS: Record<CategoryId, readonly string[]> = {
   music: ['mp3', 'flac', 'wav'],
   shows: ['mp4', 'mkv', 'avi'],
   photos: ['jpg', 'png', 'webp'],
-  downloads: [],
+  drive: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'tar', 'gz', 'rar', '7z', 'png', 'jpg', 'jpeg', 'mp4', 'mp3', 'wav', 'flac', 'mkv', 'avi'],
 };
 
 export const createDefaultAppConfig = (): AppConfig => ({
@@ -142,9 +190,38 @@ export const createDefaultAppConfig = (): AppConfig => ({
     music: 'media/music',
     shows: 'media/shows',
     photos: 'media/photos',
-    downloads: 'media/downloads',
+    drive: 'media/drive',
   },
 });
 
 export const getCategoryDefinition = (categoryId: CategoryId): CategoryDefinition =>
   CATEGORY_DEFINITIONS.find((definition) => definition.id === categoryId) ?? CATEGORY_DEFINITIONS[0];
+
+export type User = {
+  id: string;
+  username: string;
+  role: 'Admin' | 'Viewer';
+  createdAt: string;
+};
+
+export type Device = {
+  id: string;
+  userId: string;
+  name: string;
+  platform: string;
+  trusted: boolean;
+  lastConnected: string;
+};
+
+export type Session = {
+  id: string;
+  userId: string;
+  deviceId: string;
+  token: string;
+  expiresAt: string;
+};
+
+export type PairingStatus = {
+  status: 'pending' | 'approved';
+  token?: string;
+};

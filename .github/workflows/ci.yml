@@ -1,0 +1,65 @@
+name: MediaGrid CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  rust-tests:
+    name: Rust Server Tests
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            apps/server/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Run Cargo Check
+        run: cargo check --manifest-path apps/server/src-tauri/Cargo.toml
+
+      - name: Run Cargo Test
+        run: cargo test --manifest-path apps/server/src-tauri/Cargo.toml
+
+  node-tests:
+    name: Web Frontend & API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Node Dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run Vitest Tests
+        run: pnpm test
+
+      - name: Run Web Build
+        run: pnpm --filter @mediagrid/web build

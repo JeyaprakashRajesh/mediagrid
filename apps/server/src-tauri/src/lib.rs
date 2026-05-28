@@ -1,48 +1,95 @@
-mod api;
-mod config;
-mod database;
+#![recursion_limit = "512"]
+
+pub mod api;
+pub mod cache;
+mod commands;
+pub mod config;
+pub mod database;
+pub mod indexing;
+pub mod jobs;
 mod logger;
-mod media;
+pub mod media;
+pub mod metadata;
 pub mod runtime;
-mod storage;
-mod websocket;
 pub mod server;
+pub mod storage;
+pub mod sync;
+pub mod thumbnails;
+mod tray;
+pub mod watcher;
+mod websocket;
+
+pub mod streaming;
+pub mod transcoding;
+pub mod hls;
+pub mod subtitles;
+pub mod sessions;
+pub mod watch;
+pub mod audio;
+pub mod bandwidth;
+pub mod auth;
+pub mod devices;
+pub mod pairing;
+pub mod access;
+pub mod networking;
+pub mod security;
+pub mod remote;
 
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
-    .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
+    // Ensure global config directory and logs directory exist before logger plugin starts
+    let logs_dir = crate::storage::global_config_dir().join("logs");
+    let _ = std::fs::create_dir_all(&logs_dir);
 
-      let runtime_state = runtime::bootstrap();
-      app.manage(runtime_state.clone());
-      api::init_api();
-      websocket::init_websocket();
+    tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .level(log::LevelFilter::Info)
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                        path: logs_dir,
+                        file_name: Some("mediagrid.log".to_string()),
+                    }),
+                ])
+                .build(),
+        )
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
+        .setup(|app| {
+            log::info!("Initializing MediaGrid background runtime...");
 
-      // start REST + WebSocket servers in a dedicated tokio runtime
-      let cfg = runtime_state.lock().unwrap().config.clone();
-      let server_shared = runtime_state.clone();
-      std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_multi_thread()
-          .enable_all()
-          .build()
-          .expect("failed to build tokio runtime");
+            // Initialize runtime state
+            let runtime_state = runtime::bootstrap();
+            app.manage(runtime_state.clone());
 
-        rt.block_on(async move {
-          crate::server::start_servers(server_shared, cfg.server_port, cfg.websocket_port).await;
-        });
-      });
+            // Initialize the tray icon
+            tray::init_tray(app)?;
 
-      Ok(())
-    })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+            // Start REST and WebSocket services in background
+            runtime::start_services(app.handle());
+
+            // Update tray menu to reflect active ports and status
+            tray::update_tray_menu(app.handle())?;
+
+            log::info!("MediaGrid background runtime active.");
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::restart_runtime,
+            commands::rescan_media,
+            commands::open_logs_folder,
+            commands::open_media_folders,
+            commands::select_storage_root,
+            commands::setup_runtime,
+            commands::get_runtime_endpoint
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

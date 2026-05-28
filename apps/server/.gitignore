@@ -10,7 +10,13 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.turbo/
 *.local
+
+# Tauri / Rust build output in the server app
+src-tauri/target/
+src-tauri/target_check/
+src-tauri/target-check/
 
 # Editor directories and files
 .vscode/*

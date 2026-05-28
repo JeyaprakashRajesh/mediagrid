@@ -1,6 +1,8 @@
+@import "tailwindcss";
+
 :root {
 	color-scheme: dark;
-	font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+	font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 	line-height: 1.5;
 	font-weight: 400;
 	color: #ecf4ff;
@@ -21,6 +23,7 @@ body,
 	min-width: 320px;
 	min-height: 100%;
 	margin: 0;
+	background: #07111d;
 }
 
 body {
@@ -40,4 +43,24 @@ button {
 
 a {
 	color: inherit;
+}
+
+/* Custom premium scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
 }

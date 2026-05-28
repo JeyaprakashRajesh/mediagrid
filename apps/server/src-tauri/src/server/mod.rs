@@ -1,216 +1,233 @@
-use std::{convert::Infallible, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::net::SocketAddr;
 
-use futures::{FutureExt, StreamExt, SinkExt};
-use serde::Serialize;
+use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast::{self, Sender};
 use warp::ws::{Message, WebSocket};
-use warp::{Filter, Rejection, Reply};
 
 use crate::runtime::SharedRuntimeState;
-use crate::media::{self, MediaIndexItem};
 
-#[derive(Serialize)]
-struct HealthResponse {
-  runtimeStatus: String,
-  filesystemStatus: String,
-  databaseStatus: String,
-  websocketConnected: bool,
+pub async fn start_servers(
+    shared: SharedRuntimeState,
+    server_port: u16,
+    websocket_port: u16,
+    shutdown_rx: tokio::sync::watch::Receiver<bool>,
+    app_handle: Option<tauri::AppHandle>,
+) {
+    log::info!(
+        "Starting REST API on port {} and WebSocket on port {}...",
+        server_port,
+        websocket_port
+    );
+
+    // WebSocket broadcaster
+    let (tx, _rx) = broadcast::channel::<String>(128);
+    let tx_ws = tx.clone();
+
+    // Save the event broadcaster to the state so that other modules can access it
+    {
+        let mut state = shared.lock().unwrap();
+        state.event_tx = Some(tx.clone());
+    }
+
+    if let Some(ref handle) = app_handle {
+        crate::runtime::ensure_background_systems(handle);
+        // Enqueue a full scan on every startup so the web client sees existing media
+        crate::runtime::request_scan(handle);
+    } else {
+        crate::runtime::start_headless_background_systems(shared.clone(), shutdown_rx.clone());
+    }
+
+    let routes = crate::api::get_routes(
+        shared.clone(),
+        server_port,
+        websocket_port,
+        tx_ws.clone(),
+        app_handle.clone(),
+    );
+    let ws_routes = crate::api::get_websocket_route(shared.clone(), tx_ws, app_handle.clone());
+
+    // graceful shutdown logic for warp
+    let graceful_shutdown = make_shutdown_signal(shutdown_rx.clone());
+    let ws_graceful_shutdown = make_shutdown_signal(shutdown_rx.clone());
+
+    // Keep the Warp server futures alive inside this async task. The headless
+    // dev_server owns a Tokio runtime, while Tauri owns the app runtime.
+    // Avoiding nested tokio::spawn calls keeps `tauri dev` from losing the
+    // listeners after this function logs startup.
+    let rest_addr: SocketAddr = ([0, 0, 0, 0], server_port).into();
+    let (_, rest_server) =
+        warp::serve(routes).bind_with_graceful_shutdown(rest_addr, graceful_shutdown);
+
+    if websocket_port != server_port {
+        let ws_addr: SocketAddr = ([0, 0, 0, 0], websocket_port).into();
+        let (_, ws_server) =
+            warp::serve(ws_routes).bind_with_graceful_shutdown(ws_addr, ws_graceful_shutdown);
+        tokio::select! {
+            _ = rest_server => {
+                log::info!("Warp REST server stopped.");
+            }
+            _ = ws_server => {
+                log::info!("Warp WebSocket server stopped.");
+            }
+        }
+    } else {
+        rest_server.await;
+        log::info!("Warp REST server stopped.");
+    }
 }
 
-#[derive(Serialize)]
-struct RuntimeInfo {
-  runtimeVersion: String,
-  storageRoot: String,
-  serverPort: u16,
-  websocketPort: u16,
-  runtimeStatus: String,
-  filesystemStatus: String,
-  databaseStatus: String,
-  lastScanAt: Option<String>,
-  lastRepairAt: Option<String>,
+fn make_shutdown_signal(
+    mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
+) -> impl std::future::Future<Output = ()> + Send + 'static {
+    async move {
+        loop {
+            if *shutdown_rx.borrow() {
+                break;
+            }
+            if shutdown_rx.changed().await.is_err() {
+                break; // Sender dropped
+            }
+        }
+    }
 }
 
-#[derive(Serialize)]
-struct CategoryDefinition {
-  id: String,
-  name: String,
-  folder: String,
-  itemCount: usize,
-  lastScannedAt: Option<String>,
-}
-
-#[derive(Serialize)]
-struct MediaItemResponse {
-  id: String,
-  title: String,
-  path: String,
-  kind: String,
-  category: String,
-  createdAt: String,
-  updatedAt: String,
-}
-
-pub async fn start_servers(shared: SharedRuntimeState, server_port: u16, websocket_port: u16) {
-  let shared_rest = shared.clone();
-  let rest = warp::path::end()
-    .map(|| warp::reply::html("MediaGrid runtime"));
-
-  let health_route = warp::path("health").and(warp::get()).map(move || {
-    let body = HealthResponse {
-      runtimeStatus: "ready".to_string(),
-      filesystemStatus: "ready".to_string(),
-      databaseStatus: "ready".to_string(),
-      websocketConnected: true,
+pub async fn client_connection(
+    ws: WebSocket,
+    tx: Sender<String>,
+    addr: Option<SocketAddr>,
+    shared_state: SharedRuntimeState,
+    app_handle: Option<tauri::AppHandle>,
+) {
+    let client_info = if let Some(a) = addr {
+        format!("Web Dashboard ({})", a.ip())
+    } else {
+        "Web Dashboard (unknown)".to_string()
     };
 
-    warp::reply::json(&body)
-  });
+    log::info!("WebSocket client connecting from: {}", client_info);
 
-  let runtime_route = warp::path("runtime").and(warp::get()).map(move || {
-    let body = RuntimeInfo {
-      runtimeVersion: "0.1.0".to_string(),
-      storageRoot: shared_rest.lock().unwrap().storage_root.to_string_lossy().to_string(),
-      serverPort: server_port,
-      websocketPort: websocket_port,
-      runtimeStatus: "ready".to_string(),
-      filesystemStatus: "ready".to_string(),
-      databaseStatus: "ready".to_string(),
-      lastScanAt: None,
-      lastRepairAt: None,
+    // Add client connection
+    {
+        let mut state = shared_state.lock().unwrap();
+        state.active_connections.push(client_info.clone());
+    }
+    if let Some(ref handle) = app_handle {
+        let _ = crate::tray::update_tray_menu(handle);
+    }
+
+    let (mut ws_tx, mut ws_rx) = ws.split();
+    let mut rx = tx.subscribe();
+
+    // Send RUNTIME_READY immediately with full runtime details
+    let r_info = {
+        let state = shared_state.lock().unwrap();
+        crate::runtime::runtime_info(
+            &state,
+            state.config.server_port,
+            state.config.websocket_port,
+        )
     };
 
-    warp::reply::json(&body)
-  });
+    log::info!(
+        "Sending RUNTIME_READY details to WebSocket client: {}",
+        client_info
+    );
+    let _ = ws_tx
+        .send(Message::text(
+            serde_json::json!({
+              "type": "RUNTIME_READY",
+              "timestamp": chrono::Utc::now().to_rfc3339(),
+              "runtime": r_info
+            })
+            .to_string(),
+        ))
+        .await;
 
-  let categories_route = warp::path("categories").and(warp::get()).map(move || {
-    let categories = vec![
-      CategoryDefinition { id: "movies".into(), name: "Movies".into(), folder: "media/movies".into(), itemCount: 0, lastScannedAt: None },
-      CategoryDefinition { id: "music".into(), name: "Music".into(), folder: "media/music".into(), itemCount: 0, lastScannedAt: None },
-      CategoryDefinition { id: "shows".into(), name: "Shows".into(), folder: "media/shows".into(), itemCount: 0, lastScannedAt: None },
-      CategoryDefinition { id: "photos".into(), name: "Photos".into(), folder: "media/photos".into(), itemCount: 0, lastScannedAt: None },
-      CategoryDefinition { id: "downloads".into(), name: "Downloads".into(), folder: "media/downloads".into(), itemCount: 0, lastScannedAt: None },
-    ];
+    // Send FILESYSTEM_REPAIRED immediately if files were repaired on startup
+    let repaired_paths: Vec<String> = {
+        let state = shared_state.lock().unwrap();
+        state
+            .filesystem_repaired_paths
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect()
+    };
 
-    warp::reply::json(&serde_json::json!({ "categories": categories, "total": categories.len() }))
-  });
-
-  // implement /media/{category}
-  let shared_for_media = shared.clone();
-  let media_route = warp::path("media")
-    .and(warp::path::param::<String>())
-    .and(warp::get())
-    .and_then(move |category: String| {
-      let shared = shared_for_media.clone();
-
-      async move {
-        let cfg = &shared.lock().unwrap().config;
-        let root = shared.lock().unwrap().storage_root.clone();
-        let items = media::scan_media(&root, &cfg).unwrap_or_default();
-
-        let response_items: Vec<MediaItemResponse> = items
-          .into_iter()
-          .filter(|it| it.category == category)
-          .map(|it| MediaItemResponse {
-            id: format!("{}", uuid::Uuid::new_v4()),
-            title: it.title,
-            path: it.path.to_string_lossy().to_string(),
-            kind: it.kind,
-            category: it.category,
-            createdAt: it.created_at,
-            updatedAt: it.updated_at,
-          })
-          .collect();
-
-        Ok::<_, Rejection>(warp::reply::json(&serde_json::json!({ "category": category, "items": response_items, "total": response_items.len() })))
-      }
-    });
-
-  // WebSocket broadcaster
-  let (tx, _rx) = broadcast::channel::<String>(128);
-  let tx_ws = tx.clone();
-
-  let ws_route = warp::path("ws")
-    .and(warp::ws())
-    .and(warp::any().map(move || tx_ws.clone()))
-    .map(|ws: warp::ws::Ws, tx: Sender<String>| {
-      ws.on_upgrade(move |socket| client_connection(socket, tx))
-    });
-
-  let routes = rest.or(health_route).or(runtime_route).or(categories_route).or(media_route).or(ws_route);
-
-  // spawn REST server
-  let rest_addr: SocketAddr = ([127, 0, 0, 1], server_port).into();
-  let rest_server = warp::serve(routes).run(rest_addr);
-
-  // background rescan broadcaster
-  let broadcast_tx = tx.clone();
-  let shared_for_task = shared.clone();
-  tokio::spawn(async move {
-    let mut previous = std::collections::HashMap::<String, u64>::new();
-
-    loop {
-      let items = media::scan_media(&shared_for_task.lock().unwrap().storage_root, &shared_for_task.lock().unwrap().config).unwrap_or_default();
-      let mut current = std::collections::HashMap::new();
-
-      for it in &items {
-        current.insert(it.path.to_string_lossy().to_string(), it.updated_at.parse::<u64>().unwrap_or(0));
-      }
-
-      // detect added
-      for (path, mtime) in &current {
-        if !previous.contains_key(path) {
-          let _ = broadcast_tx.send(serde_json::json!({ "type": "MEDIA_ADDED", "timestamp": chrono::Utc::now().to_rfc3339(), "media": { "path": path } }).to_string());
-        }
-      }
-
-      // detect removed
-      for path in previous.keys() {
-        if !current.contains_key(path) {
-          let _ = broadcast_tx.send(serde_json::json!({ "type": "MEDIA_REMOVED", "timestamp": chrono::Utc::now().to_rfc3339(), "mediaId": path }).to_string());
-        }
-      }
-
-      previous = current;
-      tokio::time::sleep(Duration::from_secs(10)).await;
+    if !repaired_paths.is_empty() {
+        log::info!(
+            "Sending FILESYSTEM_REPAIRED immediately to WebSocket client: {:?}",
+            repaired_paths
+        );
+        let _ = ws_tx
+            .send(Message::text(
+                serde_json::json!({
+                  "type": "FILESYSTEM_REPAIRED",
+                  "timestamp": chrono::Utc::now().to_rfc3339(),
+                  "repairedPaths": repaired_paths
+                })
+                .to_string(),
+            ))
+            .await;
     }
-  });
 
-  // run server (this blocks the current task until shutdown)
-  tokio::spawn(rest_server.map(|_| ())).await.ok();
-}
-
-async fn client_connection(ws: WebSocket, tx: Sender<String>) {
-  let (mut ws_tx, mut ws_rx) = ws.split();
-
-  let mut rx = tx.subscribe();
-
-  // Send RUNTIME_READY immediately
-  let _ = ws_tx.send(Message::text(serde_json::json!({ "type": "RUNTIME_READY", "timestamp": chrono::Utc::now().to_rfc3339() }).to_string())).await;
-
-  // forward broadcast messages to websocket
-  let mut send_task = tokio::spawn(async move {
-    while let Ok(msg) = rx.recv().await {
-      if ws_tx.send(Message::text(msg)).await.is_err() {
-        break;
-      }
-    }
-  });
-
-  // read loop to keep connection alive
-  let mut recv_task = tokio::spawn(async move {
-    while let Some(result) = ws_rx.next().await {
-      match result {
-        Ok(msg) => {
-          if msg.is_text() {
-            // ignore client messages for now
-          } else if msg.is_close() {
-            break;
-          }
+    // forward broadcast messages to websocket
+    let client_info_send = client_info.clone();
+    let send_loop = async move {
+        loop {
+            match rx.recv().await {
+                Ok(msg) => {
+                    if ws_tx.send(Message::text(msg)).await.is_err() {
+                        log::error!("Failed to send message to client {}", client_info_send);
+                        break;
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                    log::warn!("Client {} lagged by {} messages", client_info_send, n);
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    break;
+                }
+            }
         }
-        Err(_) => break,
-      }
-    }
-  });
+    };
 
-  let _ = tokio::join!(send_task, recv_task);
+    // read loop to keep connection alive
+    let client_info_recv = client_info.clone();
+    let recv_loop = async move {
+        while let Some(result) = ws_rx.next().await {
+            match result {
+                Ok(msg) => {
+                    if msg.is_close() {
+                        log::info!("Received close frame from client {}", client_info_recv);
+                        break;
+                    }
+                }
+                Err(err) => {
+                    log::error!("WebSocket error for client {}: {:?}", client_info_recv, err);
+                    break;
+                }
+            }
+        }
+    };
+
+    tokio::select! {
+        _ = send_loop => {}
+        _ = recv_loop => {}
+    }
+    log::info!("WebSocket client connection finished: {}", client_info);
+
+    // Remove client connection on disconnect
+    {
+        let mut state = shared_state.lock().unwrap();
+        if let Some(pos) = state
+            .active_connections
+            .iter()
+            .position(|x| x == &client_info)
+        {
+            state.active_connections.remove(pos);
+        }
+    }
+    if let Some(ref handle) = app_handle {
+        let _ = crate::tray::update_tray_menu(handle);
+    }
 }

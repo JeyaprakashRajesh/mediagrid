@@ -2,13 +2,16 @@
   "name": "mediagrid-monorepo",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run web\"",
-    "dev": "turbo run dev",
+    "dev": "concurrently -k \"npm run runtime\" \"npm run web\"",
     "build": "turbo run build",
+    "runtime": "cargo run --bin dev_server --manifest-path apps/server/src-tauri/Cargo.toml",
     "server": "npm run tauri dev --prefix apps/server",
     "web": "npm run dev --prefix apps/web",
-    "mobile": "npm run start --prefix apps/mobile"
+    "mobile": "npm run start --prefix apps/mobile",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

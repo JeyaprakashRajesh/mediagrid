@@ -1,383 +1,258 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createRuntimeClient } from '@mediagrid/api';
-import {
-  CATEGORY_DEFINITIONS,
-  type CategoryDefinition,
-  type CategoryId,
-  type HealthResponse,
-  type MediaItem,
-  type RuntimeInfo,
-  type WebSocketMessage,
-} from '@mediagrid/types';
+import { useEffect, useCallback } from 'react';
+import { useAppStore } from './store/useAppStore';
+import { connectRuntime, fetchInitialData, fetchMedia, openWebSocket } from './services/runtime';
+import { Sidebar } from './components/sidebar/Sidebar';
+import { Dashboard } from './modules/dashboard/Dashboard';
+import { MediaContent } from './modules/media/MediaContent';
+import { SetupWizard } from './modules/setup/SetupWizard';
+import { LoginScreen } from './modules/auth/LoginScreen';
+import { ContinueWatching } from './watch/ContinueWatching';
+import { StreamingDashboard } from './sessions/StreamingDashboard';
+import { DevicesDashboard } from './modules/devices/DevicesDashboard';
+import { MusicPlayer } from './audio/MusicPlayer';
+import { VideoPlayer } from './player/VideoPlayer';
+import { WifiOff } from 'lucide-react';
+import type { CategoryId } from '@mediagrid/types';
 import './App.css';
 
-const runtimeClient = createRuntimeClient();
+const getCategoryLabel = (id: CategoryId) => {
+  switch (id) {
+    case 'movies':
+      return 'Movies';
+    case 'music':
+      return 'Music';
+    case 'shows':
+      return 'Shows';
+    case 'photos':
+      return 'Photos';
+    case 'drive':
+      return 'Drive';
+  }
+};
 
-type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'offline';
-
-const getCategoryLabel = (categoryId: CategoryId): string =>
-  CATEGORY_DEFINITIONS.find((definition) => definition.id === categoryId)?.name ?? categoryId;
+const parseHash = () => {
+  const hash = window.location.hash || '';
+  if (!hash.startsWith('#/')) {
+    return { view: 'devices', category: 'movies' as CategoryId, folderPath: '' };
+  }
+  const parts = hash.substring(2).split('/');
+  const route = parts[0];
+  if (route === 'library') {
+    const category = (parts[1] || 'movies') as CategoryId;
+    const folderPath = parts.slice(2).map(decodeURIComponent).join('/');
+    return { view: 'library', category, folderPath };
+  } else if (route === 'streaming') {
+    return { view: 'admin', category: 'movies' as CategoryId, folderPath: '' };
+  } else {
+    return { view: route as any, category: 'movies' as CategoryId, folderPath: '' };
+  }
+};
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [runtime, setRuntime] = useState<RuntimeInfo | null>(null);
-  const [categories, setCategories] = useState<CategoryDefinition[]>([]);
-  const [activeCategory, setActiveCategory] = useState<CategoryId>('movies');
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
-  const [loadingMedia, setLoadingMedia] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const {
+    connectionState,
+    websocketStatus,
+    selectedCategory,
+    mediaItems,
+    isConfigured,
+    isAuthenticated,
+    activeVideo,
+    setActiveVideo,
+    currentView,
+    setCurrentView,
+    setSelectedCategory,
+    setCurrentFolderPath,
+    currentFolderPath,
+  } = useAppStore();
 
-  const activeCategoryDefinition = useMemo(
-    () => categories.find((category) => category.id === activeCategory) ?? null,
-    [activeCategory, categories],
-  );
+  const syncHashState = useCallback(() => {
+    const { view, category, folderPath } = parseHash();
+    if (currentView !== view) {
+      setCurrentView(view as any);
+    }
+    if (selectedCategory !== category) {
+      setSelectedCategory(category);
+    }
+    if (currentFolderPath !== folderPath) {
+      setCurrentFolderPath(folderPath);
+    }
+  }, [currentView, selectedCategory, currentFolderPath, setCurrentView, setSelectedCategory, setCurrentFolderPath]);
+
+  // Sync hash on mount and listen to changes
+  useEffect(() => {
+    if (isAuthenticated && isConfigured) {
+      syncHashState();
+      window.addEventListener('hashchange', syncHashState);
+      return () => window.removeEventListener('hashchange', syncHashState);
+    }
+  }, [isAuthenticated, isConfigured, syncHashState]);
+
+  // Default hash redirect
+  useEffect(() => {
+    if (isAuthenticated && isConfigured && !window.location.hash) {
+      window.location.hash = '#/devices';
+    }
+  }, [isAuthenticated, isConfigured]);
+
+  // Fetch category media when selection or view changes
+  useEffect(() => {
+    if (isAuthenticated && isConfigured && currentView === 'library') {
+      fetchMedia(selectedCategory);
+    }
+  }, [selectedCategory, currentView, isAuthenticated, isConfigured]);
+
+  // Re-fetch all data and connect WebSocket after a successful login
+  const handleLogin = useCallback(async () => {
+    const result = await fetchInitialData();
+    if (result === 'success') {
+      fetchMedia(selectedCategory);
+      // Kick off the WebSocket channel that was deferred at startup
+      openWebSocket?.();
+    }
+  }, [selectedCategory]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadRuntimeData = async () => {
-      try {
-        const [healthResponse, runtimeResponse, categoryResponse] = await Promise.all([
-          runtimeClient.health(),
-          runtimeClient.runtime(),
-          runtimeClient.categories(),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setHealth(healthResponse);
-        setRuntime(runtimeResponse);
-        setCategories(categoryResponse.categories);
-        setErrorMessage(null);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to reach the runtime.');
-        setHealth(null);
-        setRuntime(null);
-        setCategories(CATEGORY_DEFINITIONS.map((definition) => ({ ...definition })));
-      } finally {
-        if (!cancelled) {
-        }
-      }
-    };
-
-    void loadRuntimeData();
-
+    // Connect to runtime on mount and cleanup on unmount
+    const cleanup = connectRuntime();
     return () => {
-      cancelled = true;
+      cleanup();
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Failed State
+  if (connectionState === 'failed') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#07111d] p-6 text-slate-300">
+        <div className="p-5 rounded-3xl bg-red-500/10 border border-red-500/20 text-red-500 mb-6">
+          <WifiOff size={40} />
+        </div>
+        <h2 className="text-xl font-bold text-white tracking-wide text-center">
+          Connection Failed
+        </h2>
+        <p className="text-sm text-slate-400 text-center mt-2 max-w-[36ch] leading-relaxed">
+          Maximum connection attempts exceeded. Please check that the background runtime service is active.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-6 px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold font-mono tracking-wide transition-all shadow-lg shadow-red-500/20 border border-red-400/20 active:scale-95"
+        >
+          FORCE MANUAL RETRY
+        </button>
+      </div>
+    );
+  }
 
-    const loadCategoryMedia = async () => {
-      setLoadingMedia(true);
+  // 3. Connected State: Setup wizard
+  if (!isConfigured) {
+    return <SetupWizard />;
+  }
 
-      try {
-        const response = await runtimeClient.media(activeCategory);
-
-        if (cancelled) {
-          return;
-        }
-
-        setMediaItems(response.items);
-      } catch {
-        if (!cancelled) {
-          setMediaItems([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingMedia(false);
-        }
-      }
-    };
-
-    void loadCategoryMedia();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCategory]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let reconnectTimer: number | undefined;
-    let socket: WebSocket | null = null;
-    let attempt = 0;
-
-    const scheduleReconnect = () => {
-      if (cancelled) {
-        return;
-      }
-
-      setConnectionState(attempt === 0 ? 'offline' : 'reconnecting');
-      reconnectTimer = window.setTimeout(() => {
-        attempt += 1;
-        connect();
-      }, Math.min(1000 * 2 ** attempt, 10000));
-    };
-
-    const handleMessage = (message: WebSocketMessage) => {
-      if (message.type === 'RUNTIME_READY') {
-        setRuntime(message.runtime);
-        setConnectionState('connected');
-        return;
-      }
-
-      if (message.type === 'CATEGORY_UPDATED') {
-        setCategories((currentCategories) =>
-          currentCategories.map((category) =>
-            category.id === message.category.id ? message.category : category,
-          ),
-        );
-
-        if (message.category.id === activeCategory) {
-          void runtimeClient.media(activeCategory).then((response) => {
-            if (!cancelled) {
-              setMediaItems(response.items);
-            }
-          });
-        }
-      }
-
-      if (message.type === 'MEDIA_ADDED' && message.media.category === activeCategory) {
-        setMediaItems((currentItems) => [message.media, ...currentItems]);
-      }
-
-      if (message.type === 'MEDIA_REMOVED' && message.category === activeCategory) {
-        setMediaItems((currentItems) =>
-          currentItems.filter((item) => item.id !== message.mediaId),
-        );
-      }
-
-      if (message.type === 'FILESYSTEM_REPAIRED') {
-        setErrorMessage(`Filesystem repaired: ${message.repairedPaths.join(', ')}`);
-      }
-    };
-
-    const connect = () => {
-      try {
-        socket = runtimeClient.connectWebSocket((message) => {
-          handleMessage(message);
-        });
-
-        socket.addEventListener('open', () => {
-          if (!cancelled) {
-            attempt = 0;
-            setConnectionState('connected');
-          }
-        });
-
-        socket.addEventListener('close', () => {
-          if (!cancelled) {
-            scheduleReconnect();
-          }
-        });
-
-        socket.addEventListener('error', () => {
-          if (!cancelled) {
-            setConnectionState('offline');
-          }
-        });
-      } catch {
-        scheduleReconnect();
-      }
-    };
-
-    connect();
-
-    return () => {
-      cancelled = true;
-
-      if (reconnectTimer) {
-        window.clearTimeout(reconnectTimer);
-      }
-
-      socket?.close();
-    };
-  }, [activeCategory]);
-
-  const displayedCategories = categories.length > 0 ? categories : (CATEGORY_DEFINITIONS as CategoryDefinition[]);
-  const isEmptyCategory = !loadingMedia && mediaItems.length === 0;
+  // 4. Connected & configured but not authenticated → show login
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-lockup">
-          <span className="brand-mark">MG</span>
-          <div>
-            <p className="eyebrow">Runtime-first</p>
-            <h1>MediaGrid</h1>
-          </div>
+      {connectionState !== 'connected' ? (
+        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-slate-800/60 bg-slate-950/90 px-4 py-2 text-[11px] font-mono tracking-wide text-slate-300 shadow-lg shadow-black/20 backdrop-blur">
+          {connectionState === 'connecting'
+            ? 'Connecting to runtime endpoint...'
+            : connectionState === 'reconnecting'
+            ? 'Reconnecting to runtime endpoint...'
+            : 'Runtime offline, retrying in background...'}
         </div>
+      ) : null}
 
-        <div className={`connection-banner connection-${connectionState}`}>
-          <span className="connection-dot" />
-          <span>{connectionState === 'connected' ? 'Runtime connected' : 'Waiting for runtime'}</span>
-        </div>
+      {/* Sidebar navigation system */}
+      <Sidebar />
 
-        <nav className="category-nav" aria-label="Media categories">
-          {displayedCategories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              className={`category-pill ${category.id === activeCategory ? 'active' : ''}`}
-              onClick={() => setActiveCategory(category.id)}
-            >
-              <span>
-                <strong>{category.name}</strong>
-                <small>{category.folder}</small>
-              </span>
-              <b>{category.itemCount}</b>
-            </button>
-          ))}
-        </nav>
-
-        <section className="sidebar-summary">
-          <h2>Runtime Summary</h2>
-          <dl>
-            <div>
-              <dt>Status</dt>
-              <dd>{health?.runtimeStatus ?? 'offline'}</dd>
-            </div>
-            <div>
-              <dt>Storage</dt>
-              <dd>{runtime?.storageRoot ?? 'C:/MediaGrid'}</dd>
-            </div>
-            <div>
-              <dt>Database</dt>
-              <dd>{health?.databaseStatus ?? 'missing'}</dd>
-            </div>
-          </dl>
-        </section>
-      </aside>
-
+      {/* Main Content Area */}
       <main className="dashboard">
         <header className="hero-panel">
           <div>
-            <p className="eyebrow">Phase 1 implementation</p>
-            <h2>{getCategoryLabel(activeCategory)}</h2>
-            <p>
-              Runtime status, filesystem repair state, category navigation, and media access are
-              wired into a single local-first control surface.
+            <p className="eyebrow text-xs tracking-widest text-slate-400 uppercase">
+              Connected runtime overview
+            </p>
+            <h2 className="text-white text-3xl font-extrabold my-2">
+              {currentView === 'devices' ? 'Devices' : getCategoryLabel(selectedCategory)}
+            </h2>
+            <p className="text-sm text-slate-300 max-w-[64ch] leading-relaxed mt-1">
+              {currentView === 'devices'
+                ? 'Review trusted devices, active sessions, and the current tailnet endpoint before browsing the library.'
+                : 'Visualizing runtime file allocations, repair records, and client socket activity in a unified surface.'}
             </p>
           </div>
 
-          <div className="hero-metrics">
+          {/* Quick Metrics panel */}
+          <div className="hero-metrics min-w-[220px]">
             <div>
               <span>WebSocket</span>
-              <strong>{connectionState}</strong>
+              <strong className={`${
+                websocketStatus === 'connected'
+                  ? 'text-emerald-400'
+                  : websocketStatus === 'connecting'
+                  ? 'text-amber-400'
+                  : 'text-rose-400'
+              } capitalize font-semibold flex items-center gap-1.5 mt-1`}>
+                {websocketStatus}
+              </strong>
             </div>
-            <div>
-              <span>Categories</span>
-              <strong>{displayedCategories.length}</strong>
-            </div>
-            <div>
-              <span>Media</span>
-              <strong>{mediaItems.length}</strong>
+            <div className="flex flex-col justify-between">
+              <span>Category Media</span>
+              <strong className="text-white text-lg font-bold mt-1">
+                {mediaItems.length}
+              </strong>
             </div>
           </div>
         </header>
 
-        <section className="content-grid">
-          <article className="panel panel-wide">
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Category view</p>
-                <h3>{activeCategoryDefinition?.name ?? getCategoryLabel(activeCategory)}</h3>
-              </div>
-              <span className="panel-badge">
-                {activeCategoryDefinition?.itemCount ?? mediaItems.length} items
-              </span>
-            </div>
+        {/* Continue Watching (Wide screen) */}
+        {currentView === 'library' && <ContinueWatching />}
 
-            {loadingMedia ? (
-              <div className="empty-state">
-                <h4>Loading category</h4>
-                <p>Fetching the latest media index from the runtime.</p>
-              </div>
-            ) : isEmptyCategory ? (
-              <div className="empty-state">
-                <h4>No media indexed yet</h4>
-                <p>
-                  Once the runtime scans {activeCategoryDefinition?.folder ?? activeCategory}, the
-                  items will appear here.
-                </p>
-              </div>
+        {/* Content grid */}
+        <section className="content-grid">
+          {/* Category-specific Media content (Wide panel) */}
+          <article className="panel panel-wide">
+            {currentView === 'devices' ? (
+              <DevicesDashboard />
+            ) : currentView === 'library' ? (
+              <>
+                <div className="panel-header">
+                  <div>
+                    <p className="eyebrow text-xs text-slate-400 uppercase">Category View</p>
+                    <h3 className="text-base font-bold text-white mt-1">
+                      {getCategoryLabel(selectedCategory)} Library
+                    </h3>
+                  </div>
+                  <span className="panel-badge text-xs font-semibold px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-300 font-mono">
+                    {mediaItems.length} items
+                  </span>
+                </div>
+
+                <MediaContent />
+              </>
             ) : (
-              <div className={activeCategory === 'photos' ? 'photo-grid media-grid' : 'media-grid'}>
-                {mediaItems.map((item) => (
-                  <article className="media-card" key={item.id}>
-                    <div className="media-card-art">
-                      {item.thumbnailPath ? (
-                        <img src={item.thumbnailPath} alt={item.title} />
-                      ) : (
-                        <span>{item.kind}</span>
-                      )}
-                    </div>
-                    <div className="media-card-body">
-                      <h4>{item.title}</h4>
-                      <p>{item.path}</p>
-                      <div className="media-meta">
-                        <span>{item.artist ?? item.kind}</span>
-                        <span>{item.album ?? getCategoryLabel(item.category)}</span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <StreamingDashboard />
             )}
           </article>
 
-          <aside className="panel panel-side">
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Runtime health</p>
-                <h3>System status</h3>
-              </div>
-            </div>
-
-            <dl className="status-list">
-              <div>
-                <dt>Runtime</dt>
-                <dd>{runtime?.runtimeStatus ?? 'offline'}</dd>
-              </div>
-              <div>
-                <dt>Filesystem</dt>
-                <dd>{health?.filesystemStatus ?? 'missing'}</dd>
-              </div>
-              <div>
-                <dt>Database</dt>
-                <dd>{health?.databaseStatus ?? 'missing'}</dd>
-              </div>
-              <div>
-                <dt>Last scan</dt>
-                <dd>{runtime?.lastScanAt ?? 'not scanned yet'}</dd>
-              </div>
-              <div>
-                <dt>Last repair</dt>
-                <dd>{runtime?.lastRepairAt ?? 'no repair recorded'}</dd>
-              </div>
-            </dl>
-
-            <div className="message-box">
-              <h4>Runtime message</h4>
-              <p>
-                {errorMessage ?? 'The dashboard is waiting for the runtime to report readiness.'}
-              </p>
-            </div>
+          {/* Infrastructure Health stats (Side panel) */}
+          <aside className="panel-side">
+            <Dashboard />
           </aside>
         </section>
       </main>
+
+      {/* Persistent global floating Music Player */}
+      <MusicPlayer />
+
+      {/* Advanced Video Player Overlay */}
+      {activeVideo && (
+        <VideoPlayer mediaItem={activeVideo} onClose={() => setActiveVideo(null)} />
+      )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
